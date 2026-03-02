@@ -1,112 +1,275 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { usePremium } from "@/context/PremiumContext";
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { supabase } from "../../services/supabase";
 
-import { Collapsible } from '@/components/ui/collapsible';
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+const IMAGE_MAP: any = {
+  "7.webp": require("../../assets/gallery/7.webp"),
+};
 
-export default function TabTwoScreen() {
+export default function ExploreScreen() {
+  const [query, setQuery] = useState("");
+  const [result, setResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const { isPremium } = usePremium();
+
+  const searchSurname = async () => {
+    if (!query.trim()) return;
+
+    Keyboard.dismiss();
+
+    setLoading(true);
+    setResult(null);
+
+    const { data, error } = await supabase
+      .from("surnames")
+      .select("*")
+      .ilike("surname", query.trim());
+
+    if (!error && data && data.length > 0) {
+      setResult(data[0]);
+    } else {
+      setResult(null);
+    }
+
+    setSearched(true);
+    setLoading(false);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    setQuery("");
+    setResult(null);
+    setSearched(false);
+    setRefreshing(false);
+  };
+
+  const getPreviewText = (text: string) => {
+    const words = text.split(" ");
+    return words.slice(0, 15).join(" ") + "...";
+  };
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={[
+          styles.content,
+          !result && !searched && styles.centered,
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor="#D4AF37"
+          />
+        }
+      >
+        <Text style={styles.title}>მოიძიე შენი გვარის ისტორია</Text>
+        
+        <Text style={styles.subtitle}>
+  შენი გვარი მხოლოდ სიტყვა არ არის — ეს არის შენი ფესვები,
+  წარმოშობა და იდენტობა. გაიგე ვინ იყვნენ შენი წინაპრები
+  და რა მემკვიდრეობა მოგყვება უკან.
+</Text>
+
+        <TextInput
+          placeholder="შეიყვანე გვარი..."
+          placeholderTextColor="#888"
+          value={query}
+          onChangeText={setQuery}
+          style={styles.input}
+          returnKeyType="search"
+          onSubmitEditing={searchSurname}
         />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+
+        <TouchableOpacity style={styles.button} onPress={searchSurname}>
+          <Text style={styles.buttonText}>ძებნა</Text>
+        </TouchableOpacity>
+
+        {loading && (
+          <ActivityIndicator
+            size="large"
+            color="#D4AF37"
+            style={{ marginTop: 30 }}
+          />
+        )}
+
+        {searched && !loading && result && (
+          <View style={styles.card}>
+            {result.image && IMAGE_MAP[result.image] && (
+              <Image source={IMAGE_MAP[result.image]} style={styles.image} />
+            )}
+
+            <Text style={styles.surname}>{result.surname}</Text>
+
+            {!isPremium ? (
+              <>
+                <Text style={styles.history}>
+                  {getPreviewText(result.full_history)}
+                </Text>
+
+                <View style={styles.premiumCard}>
+                  <Text style={styles.premiumTitle}>⭐ PRIME კონტენტი</Text>
+                  <Text style={styles.premiumText}>
+                    გვარის სრული ისტორიის სანახავად გახდით PRIME წევრი
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <Text style={styles.history}>
+                {result.full_history}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {searched && !loading && !result && (
+          <View style={styles.notFoundBox}>
+            <Text style={styles.notFoundText}>
+              ასეთი გვარი ბაზაში არ მოიძებნა.
+            </Text>
+
+            <TouchableOpacity style={styles.orderButton}>
+              <Text style={styles.orderText}>შეუკვეთე კვლევა</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
+  container: {
+    flex: 1,
+    backgroundColor: "#0A0D14",
   },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
+  content: {
+    padding: 25,
+    flexGrow: 1,
   },
+  centered: {
+    justifyContent: "center",
+  },
+  title: {
+    fontSize: 24,
+    color: "#E2D9C5",
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 30,
+  },
+  input: {
+    backgroundColor: "#111827",
+    borderRadius: 14,
+    padding: 16,
+    fontSize: 16,
+    color: "#F3F4F6",
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.3)",
+  },
+  button: {
+    backgroundColor: "#D4AF37",
+    padding: 14,
+    borderRadius: 14,
+    marginTop: 15,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#000",
+    fontWeight: "700",
+    fontSize: 16,
+  },
+  card: {
+    marginTop: 30,
+    backgroundColor: "#111827",
+    padding: 20,
+    borderRadius: 18,
+  },
+  image: {
+    width: "100%",
+    height: 200,
+    borderRadius: 14,
+    marginBottom: 15,
+    resizeMode: "contain",
+  },
+  surname: {
+    fontSize: 22,
+    fontWeight: "800",
+    color: "#D4AF37",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  history: {
+    fontSize: 16,
+    color: "#E5E7EB",
+    lineHeight: 26,
+    textAlign: "justify",
+  },
+  premiumCard: {
+    marginTop: 15,
+    backgroundColor: "#0F172A",
+    borderRadius: 14,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.4)",
+    alignItems: "center",
+  },
+  premiumTitle: {
+    color: "#D4AF37",
+    fontWeight: "800",
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  premiumText: {
+    color: "#E2D9C5",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  notFoundBox: {
+    marginTop: 40,
+    alignItems: "center",
+  },
+  notFoundText: {
+    color: "#E5E7EB",
+    fontSize: 16,
+    marginBottom: 15,
+    textAlign: "center",
+  },
+  orderButton: {
+    backgroundColor: "#D4AF37",
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  orderText: {
+    color: "#000",
+    fontWeight: "700",
+  },
+  subtitle: {
+  fontSize: 15,
+  color: "#9CA3AF",
+  textAlign: "center",
+  marginBottom: 25,
+  lineHeight: 22,
+},
 });

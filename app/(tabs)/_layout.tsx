@@ -1,35 +1,64 @@
-import { Tabs } from 'expo-router';
-import React from 'react';
-
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import { Tabs } from "expo-router";
+import React from "react";
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         headerShown: false,
-        tabBarButton: HapticTab,
-      }}>
+        tabBarStyle: {
+          backgroundColor: "#111827",
+          borderTopWidth: 1,
+          borderTopColor: "rgba(212,175,55,0.3)",
+          height: 65,
+        },
+        tabBarActiveTintColor: "#D4AF37",
+        tabBarInactiveTintColor: "#6B7280",
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "600",
+          marginBottom: 5,
+        },
+      }}
+      screenListeners={{
+        tabPress: async () => {
+          await Haptics.selectionAsync();
+        },
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: "ისტორია",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="book-outline" size={22} color={color} />
+          ),
         }}
       />
+
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          title: "გვარები",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="search-outline" size={22} color={color} />
+          ),
         }}
       />
+
+      {/* ✅ ეს დაამატე */}
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: "პროფილი",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-outline" size={22} color={color} />
+          ),
+        }}
+      />
+
     </Tabs>
   );
 }

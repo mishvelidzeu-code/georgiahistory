@@ -1,98 +1,319 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { usePremium } from "@/context/PremiumContext";
+import * as Notifications from "expo-notifications";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Image,
+  RefreshControl,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from "react-native";
+import { supabase } from "../../services/supabase";
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+const MAIN_IMAGE = require("../../assets/gallery/2.webp");
+
+const GALLERY_ITEMS = [
+  {
+    image: require("../../assets/gallery/1.webp"),
+    title: "ვინ დაიბადნენ და ვინ გარდაიცვალნენ ამ დღეს",
+    subtitle: "ცნობილი ადამიანები, ბიოგრაფიული მოკლე ცნობები",
+  },
+  {
+    image: require("../../assets/gallery/3.webp"),
+    title: "საქართველოს მნიშვნელოვანი მოვლენები",
+    subtitle: "ამ დღეს ქვეყნის ისტორიაში მომხდარი ფაქტები",
+  },
+  {
+    image: require("../../assets/gallery/4.webp"),
+    title: "მსოფლიოს მნიშვნელოვანი მოვლენები",
+    subtitle: "გლობალური ისტორიული მოვლენები ამ თარიღზე",
+  },
+];
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<any>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const { isPremium } = usePremium();
+  const router = useRouter();
+
+  useEffect(() => {
+    initializeApp();
+  }, []);
+
+  const initializeApp = async () => {
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    await fetchTodayHistory();
+  };
+
+  const fetchTodayHistory = async () => {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    const key = `${month}-${day}`;
+
+    const { data, error } = await supabase
+      .from("daily_history")
+      .select("*")
+      .eq("date", key)
+      .single();
+
+    if (error) {
+      console.log(error.message);
+    }
+
+    setData(data);
+    setLoading(false);
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await fetchTodayHistory();
+    setRefreshing(false);
+  };
+
+  const handleGalleryPress = (index: number) => {
+    if (!isPremium) {
+      router.push("/subscription");
+      return;
+    }
+
+    if (index === 0) router.push("/premium/births");
+    if (index === 1) router.push("/premium/georgia-events");
+    if (index === 2) router.push("/premium/world-events");
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#D4AF37" />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.mainContainer}>
+      <StatusBar barStyle="light-content" />
+      <SafeAreaView style={styles.safeArea}>
+        
+        <View style={styles.header}>
+          <Text style={styles.headerText}>
+            დღეს საქართველოს ისტორიაში 🇬🇪
+          </Text>
+        </View>
+
+        <View style={styles.cardWrapper}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.cardContent}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor="#D4AF37"
+              />
+            }
+          >
+            <Image source={MAIN_IMAGE} style={styles.mainImage} />
+
+            <Text style={styles.cardDateText}>
+              {data?.title}
+            </Text>
+
+            <View style={styles.divider} />
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setExpanded(!expanded)}
+            >
+              <Text style={styles.cardBodyText}>
+                <Text style={styles.dropCap}>
+                  {data?.free_text?.[0]}
+                </Text>
+
+                {expanded
+                  ? data?.free_text?.substring(1)
+                  : data?.free_text?.substring(1, 200) + "..."}
+              </Text>
+
+              <Text style={styles.readMore}>
+                {expanded ? "დაკეცე ▲" : "წაიკითხე სრულად ▼"}
+              </Text>
+            </TouchableOpacity>
+
+          </ScrollView>
+        </View>
+
+        {/* PRIME Gallery */}
+        <View style={styles.gallerySection}>
+          <Text style={styles.galleryTitle}>დამატებითი ინფორმაცია</Text>
+
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {GALLERY_ITEMS.map((item, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.galleryItem}
+                onPress={() => handleGalleryPress(index)}
+              >
+                <Image source={item.image} style={styles.galleryImage} />
+
+                {!isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Text style={styles.premiumBadgeText}>PRIME</Text>
+                  </View>
+                )}
+
+                <Text style={styles.galleryText}>
+                  {item.title}
+                </Text>
+
+                <Text style={styles.gallerySubText}>
+                  {item.subtitle}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  mainContainer: {
+    flex: 1,
+    backgroundColor: "#0A0D14",
   },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
+  safeArea: {
+    flex: 1,
+    justifyContent: "space-between",
   },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  header: {
+    alignItems: "center",
+    marginTop: 20,
+  },
+  headerText: {
+    color: "#E2D9C5",
+    fontSize: 15,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+  },
+  cardWrapper: {
+    flex: 1,
+    paddingHorizontal: 25,
+    marginVertical: 20,
+    backgroundColor: "#111827",
+    borderRadius: 18,
+    padding: 20,
+  },
+  cardContent: {
+    paddingBottom: 20,
+  },
+  cardDateText: {
+    fontSize: 30,
+    color: "#E2D9C5",
+    fontWeight: "800",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+  divider: {
+    width: 60,
+    height: 2,
+    backgroundColor: "#A98E56",
+    alignSelf: "center",
+    marginVertical: 15,
+  },
+  cardBodyText: {
+    fontSize: 17,
+    color: "#F3F4F6",
+    lineHeight: 28,
+    textAlign: "justify",
+  },
+  dropCap: {
+    fontSize: 42,
+    color: "#D4AF37",
+    fontWeight: "800",
+  },
+  readMore: {
+    marginTop: 12,
+    color: "#D4AF37",
+    fontSize: 14,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  gallerySection: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  galleryTitle: {
+    color: "#E2D9C5",
+    fontSize: 17,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  galleryItem: {
+    width: 200,
+    marginRight: 15,
+  },
+  galleryImage: {
+    width: "100%",
+    height: 110,
+    borderRadius: 12,
+  },
+  galleryText: {
+    color: "#D4AF37",
+    fontWeight: "700",
+    fontSize: 14,
+    marginTop: 8,
+  },
+  gallerySubText: {
+    color: "#E5E7EB",
+    fontSize: 12,
+    marginTop: 4,
+  },
+  premiumBadge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "#D4AF37",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  premiumBadgeText: {
+    color: "#000",
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  center: {
+    flex: 1,
+    backgroundColor: "#0A0D14",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  mainImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 14,
+    marginBottom: 15,
   },
 });
