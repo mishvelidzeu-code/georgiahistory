@@ -1,7 +1,7 @@
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-
 Deno.serve(async () => {
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
   const today = new Date();
 
   for (let i = 0; i < 7; i++) {
@@ -12,7 +12,7 @@ Deno.serve(async () => {
     const day = String(future.getDate()).padStart(2, "0");
     const key = `${month}-${day}`;
 
-    const response = await fetch(`${SUPABASE_URL}/rest/v1/daily_history`, {
+    await fetch(`${SUPABASE_URL}/rest/v1/daily_history`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -27,9 +27,7 @@ Deno.serve(async () => {
         premium_text: "პრემიუმ ისტორიული ინფორმაცია"
       })
     });
-
-    console.log("Insert status:", response.status);
   }
 
-  return new Response("Weekly update completed", { status: 200 });
+  return new Response("Weekly update completed");
 });
