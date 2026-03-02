@@ -1,9 +1,5 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2?target=deno";
-
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL")!,
-  Deno.env.get("SERVICE_ROLE_KEY")!
-);
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+const SERVICE_ROLE_KEY = Deno.env.get("SERVICE_ROLE_KEY")!;
 
 Deno.serve(async () => {
   const today = new Date();
@@ -16,11 +12,20 @@ Deno.serve(async () => {
     const day = String(future.getDate()).padStart(2, "0");
     const key = `${month}-${day}`;
 
-    await supabase.from("daily_history").upsert({
-      date: key,
-      title: `დღე ${key}`,
-      free_text: "ტესტური ისტორიული ინფორმაცია",
-      premium_text: "პრემიუმ ისტორიული ინფორმაცია",
+    await fetch(`${SUPABASE_URL}/rest/v1/daily_history`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": SERVICE_ROLE_KEY,
+        "Authorization": `Bearer ${SERVICE_ROLE_KEY}`,
+        "Prefer": "resolution=merge-duplicates"
+      },
+      body: JSON.stringify({
+        date: key,
+        title: `დღე ${key}`,
+        free_text: "ტესტური ისტორიული ინფორმაცია",
+        premium_text: "პრემიუმ ისტორიული ინფორმაცია"
+      })
     });
   }
 
