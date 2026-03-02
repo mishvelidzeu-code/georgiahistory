@@ -2,7 +2,7 @@ name: Weekly History Update
 
 on:
   schedule:
-    - cron: "59 23 * * 0"   # კვირა 23:59 UTC
+    - cron: "59 23 * * 0"
   workflow_dispatch:
 
 jobs:
@@ -14,4 +14,4 @@ jobs:
         run: |
           curl -X POST https://lgygwpvectxaxdiujjna.supabase.co/functions/v1/weekly-history-update \
           -H "Content-Type: application/json" \
-          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}"
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
