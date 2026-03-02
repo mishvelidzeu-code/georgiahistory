@@ -12,6 +12,7 @@ jobs:
     steps:
       - name: Call Supabase Function
         run: |
-          curl -X POST https://lgygwpvectxaxdiujjna.supabase.co/functions/v1/weekly-history-update \
+          curl -X POST "https://lgygwpvectxaxdiujjna.supabase.co/functions/v1/weekly-history-update" \
           -H "Content-Type: application/json" \
-          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}"
+          -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" \
+          -d "{}"
