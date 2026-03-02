@@ -1,0 +1,17 @@
+name: Weekly History Update
+
+on:
+  schedule:
+    - cron: "59 23 * * 0"   # კვირა 23:59 UTC
+  workflow_dispatch:
+
+jobs:
+  call-function:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Call Supabase Function
+        run: |
+          curl -X POST https://lgygwpvectxaxdiujjna.supabase.co/functions/v1/weekly-history-update \
+          -H "Content-Type: application/json" \
+          -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}"
