@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+import {
+  ActivityIndicator,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View
+} from "react-native";
 import { supabase } from "../../services/supabase";
 
 const IMAGE = require("../../assets/gallery/1.webp");
@@ -12,20 +19,29 @@ export default function BirthsScreen() {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
-    const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const key = `${month}-${day}`;
+  const getGeorgiaDateKey = () => {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    const georgia = new Date(utc + 4 * 60 * 60 * 1000);
 
-    const { data } = await supabase
-      .from("daily_births")
-      .select("*")
+    const year = georgia.getFullYear();
+    const month = String(georgia.getMonth() + 1).padStart(2, "0");
+    const day = String(georgia.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
+  const fetchData = async () => {
+    const key = getGeorgiaDateKey();
+
+    const { data, error } = await supabase
+      .from("daily_history")
+      .select("births_content")
       .eq("date", key)
       .single();
 
-    if (data) {
-      setContent(data.content);
+    if (!error && data) {
+      setContent(data.births_content);
     }
 
     setLoading(false);
@@ -42,11 +58,13 @@ export default function BirthsScreen() {
   return (
     <ScrollView style={styles.container}>
       <Image source={IMAGE} style={styles.image} />
+
       <Text style={styles.title}>
         ვინ დაიბადნენ და ვინ გარდაიცვალნენ ამ დღეს
       </Text>
+
       <Text style={styles.text}>
-        {content || "მონაცემები დროებით არ არის ხელმისაწვდომი."}
+        {content || "ამ დღის მონაცემები ჯერ არ არის ატვირთული."}
       </Text>
     </ScrollView>
   );

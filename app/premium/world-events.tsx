@@ -19,20 +19,29 @@ export default function WorldEventsScreen() {
     fetchData();
   }, []);
 
+  const getGeorgiaDateKey = () => {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    const georgia = new Date(utc + 4 * 60 * 60 * 1000);
+
+    const year = georgia.getFullYear();
+    const month = String(georgia.getMonth() + 1).padStart(2, "0");
+    const day = String(georgia.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  };
+
   const fetchData = async () => {
-    const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const key = `${month}-${day}`;
+    const key = getGeorgiaDateKey();
 
     const { data, error } = await supabase
-      .from("daily_world_events")
-      .select("*")
+      .from("daily_history")
+      .select("world_content")
       .eq("date", key)
       .single();
 
     if (!error && data) {
-      setContent(data.content);
+      setContent(data.world_content);
     }
 
     setLoading(false);
@@ -55,7 +64,7 @@ export default function WorldEventsScreen() {
       </Text>
 
       <Text style={styles.text}>
-        {content || "ამ დღის მონაცემები ჯერ არ არის დამატებული."}
+        {content || "ამ დღის მონაცემები ჯერ არ არის ატვირთული."}
       </Text>
     </ScrollView>
   );

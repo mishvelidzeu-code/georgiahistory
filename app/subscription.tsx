@@ -21,7 +21,14 @@ export default function SubscriptionScreen() {
 
   const handlePress = () => {
     if (!user) {
-      router.push("/(modals)/auth");
+      // 1. ჯერ ვხურავთ PRIME-ის მოდალურ ფანჯარას
+      router.back(); 
+      
+      // 2. მცირე დაყოვნებით (რომ ჩაკეცვის ანიმაცია დასრულდეს) გადავდივართ პროფილზე
+      setTimeout(() => {
+        router.push("/(tabs)/profile");
+      }, 150); 
+      
       return;
     }
 
@@ -152,5 +159,6 @@ const styles = StyleSheet.create({
   close: {
     color: "#9CA3AF",
     marginTop: 10,
+    padding: 10, // ცოტა padding დავუმატე, რომ თითის დაჭერა უფრო მარტივი იყოს
   },
 });

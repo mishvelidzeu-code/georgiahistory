@@ -63,23 +63,59 @@ export default function HomeScreen() {
     await fetchTodayHistory();
   };
 
-  const fetchTodayHistory = async () => {
-    const today = new Date();
-    const month = String(today.getMonth() + 1).padStart(2, "0");
-    const day = String(today.getDate()).padStart(2, "0");
-    const key = `${month}-${day}`;
+  const getGeorgiaNow = () => {
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    return new Date(utc + 4 * 60 * 60 * 1000);
+  };
 
-    const { data, error } = await supabase
+  const getGeorgiaDateKey = () => {
+    const georgiaTime = getGeorgiaNow();
+    const year = georgiaTime.getFullYear();
+    const month = String(georgiaTime.getMonth() + 1).padStart(2, "0");
+    const day = String(georgiaTime.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const getGeorgianDate = () => {
+    const georgiaTime = getGeorgiaNow();
+    const months = [
+      "იანვარი","თებერვალი","მარტი","აპრილი","მაისი","ივნისი",
+      "ივლისი","აგვისტო","სექტემბერი","ოქტომბერი","ნოემბერი","დეკემბერი"
+    ];
+    return `${georgiaTime.getDate()} ${months[georgiaTime.getMonth()]}`;
+  };
+
+  // ✅ მხოლოდ ციფრების highlight
+  const renderHighlightedText = (text: string) => {
+    const regex = /(\d+)/g;
+    const parts = text.split(regex);
+
+    return (
+      <Text style={styles.cardBodyText}>
+        {parts.map((part, index) =>
+          /^\d+$/.test(part) ? (
+            <Text key={index} style={styles.highlightNumber}>
+              {part}
+            </Text>
+          ) : (
+            part
+          )
+        )}
+      </Text>
+    );
+  };
+
+  const fetchTodayHistory = async () => {
+    const key = getGeorgiaDateKey();
+
+    const { data: historyData } = await supabase
       .from("daily_history")
       .select("*")
       .eq("date", key)
       .single();
 
-    if (error) {
-      console.log(error.message);
-    }
-
-    setData(data);
+    setData(historyData || null);
     setLoading(false);
   };
 
@@ -94,7 +130,6 @@ export default function HomeScreen() {
       router.push("/subscription");
       return;
     }
-
     if (index === 0) router.push("/premium/births");
     if (index === 1) router.push("/premium/georgia-events");
     if (index === 2) router.push("/premium/world-events");
@@ -108,11 +143,17 @@ export default function HomeScreen() {
     );
   }
 
+  const content = data?.georgia_content
+    ? expanded
+      ? data.georgia_content
+      : data.georgia_content.substring(0, 500) + "..."
+    : null;
+
   return (
     <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safeArea}>
-        
+
         <View style={styles.header}>
           <Text style={styles.headerText}>
             დღეს საქართველოს ისტორიაში 🇬🇪
@@ -134,34 +175,33 @@ export default function HomeScreen() {
             <Image source={MAIN_IMAGE} style={styles.mainImage} />
 
             <Text style={styles.cardDateText}>
-              {data?.title}
+              {getGeorgianDate()}
             </Text>
 
             <View style={styles.divider} />
 
             <TouchableOpacity
               activeOpacity={0.9}
-              onPress={() => setExpanded(!expanded)}
+              onPress={() => data?.georgia_content && setExpanded(!expanded)}
             >
-              <Text style={styles.cardBodyText}>
-                <Text style={styles.dropCap}>
-                  {data?.free_text?.[0]}
+              {content ? (
+                <>
+                  {renderHighlightedText(content)}
+
+                  <Text style={styles.readMore}>
+                    {expanded ? "დაკეცე ▲" : "წაიკითხე სრულად ▼"}
+                  </Text>
+                </>
+              ) : (
+                <Text style={[styles.cardBodyText, { textAlign: "center", opacity: 0.7 }]}>
+                  ინფორმაცია ამ დღისათვის ჯერ არ არის დამატებული.
                 </Text>
-
-                {expanded
-                  ? data?.free_text?.substring(1)
-                  : data?.free_text?.substring(1, 200) + "..."}
-              </Text>
-
-              <Text style={styles.readMore}>
-                {expanded ? "დაკეცე ▲" : "წაიკითხე სრულად ▼"}
-              </Text>
+              )}
             </TouchableOpacity>
 
           </ScrollView>
         </View>
 
-        {/* PRIME Gallery */}
         <View style={styles.gallerySection}>
           <Text style={styles.galleryTitle}>დამატებითი ინფორმაცია</Text>
 
@@ -180,13 +220,8 @@ export default function HomeScreen() {
                   </View>
                 )}
 
-                <Text style={styles.galleryText}>
-                  {item.title}
-                </Text>
-
-                <Text style={styles.gallerySubText}>
-                  {item.subtitle}
-                </Text>
+                <Text style={styles.galleryText}>{item.title}</Text>
+                <Text style={styles.gallerySubText}>{item.subtitle}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -198,18 +233,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  mainContainer: {
-    flex: 1,
-    backgroundColor: "#0A0D14",
-  },
-  safeArea: {
-    flex: 1,
-    justifyContent: "space-between",
-  },
-  header: {
-    alignItems: "center",
-    marginTop: 20,
-  },
+  mainContainer: { flex: 1, backgroundColor: "#0A0D14" },
+  safeArea: { flex: 1, justifyContent: "space-between" },
+  header: { alignItems: "center", marginTop: 20 },
   headerText: {
     color: "#E2D9C5",
     fontSize: 15,
@@ -224,9 +250,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 20,
   },
-  cardContent: {
-    paddingBottom: 20,
-  },
+  cardContent: { paddingBottom: 20 },
   cardDateText: {
     fontSize: 30,
     color: "#E2D9C5",
@@ -242,16 +266,16 @@ const styles = StyleSheet.create({
     marginVertical: 15,
   },
   cardBodyText: {
-    fontSize: 17,
-    color: "#F3F4F6",
-    lineHeight: 28,
-    textAlign: "justify",
-  },
-  dropCap: {
-    fontSize: 42,
-    color: "#D4AF37",
-    fontWeight: "800",
-  },
+  fontSize: 18,
+  color: "#EAEAEA",
+  lineHeight: 30,
+  letterSpacing: 0.3,
+  textAlign: "left",
+},
+  highlightNumber: {
+  color: "#D4AF37",
+  fontWeight: "800",
+},
   readMore: {
     marginTop: 12,
     color: "#D4AF37",
@@ -259,10 +283,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontWeight: "600",
   },
-  gallerySection: {
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
+  gallerySection: { paddingHorizontal: 20, marginBottom: 20 },
   galleryTitle: {
     color: "#E2D9C5",
     fontSize: 17,
@@ -270,26 +291,15 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: 15,
   },
-  galleryItem: {
-    width: 200,
-    marginRight: 15,
-  },
-  galleryImage: {
-    width: "100%",
-    height: 110,
-    borderRadius: 12,
-  },
+  galleryItem: { width: 200, marginRight: 15 },
+  galleryImage: { width: "100%", height: 110, borderRadius: 12 },
   galleryText: {
     color: "#D4AF37",
     fontWeight: "700",
     fontSize: 14,
     marginTop: 8,
   },
-  gallerySubText: {
-    color: "#E5E7EB",
-    fontSize: 12,
-    marginTop: 4,
-  },
+  gallerySubText: { color: "#E5E7EB", fontSize: 12, marginTop: 4 },
   premiumBadge: {
     position: "absolute",
     top: 8,
@@ -299,21 +309,12 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 8,
   },
-  premiumBadgeText: {
-    color: "#000",
-    fontSize: 10,
-    fontWeight: "800",
-  },
+  premiumBadgeText: { color: "#000", fontSize: 10, fontWeight: "800" },
   center: {
     flex: 1,
     backgroundColor: "#0A0D14",
     justifyContent: "center",
     alignItems: "center",
   },
-  mainImage: {
-    width: "100%",
-    height: 180,
-    borderRadius: 14,
-    marginBottom: 15,
-  },
+  mainImage: { width: "100%", height: 180, borderRadius: 14, marginBottom: 15 },
 });
