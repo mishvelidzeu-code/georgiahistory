@@ -1,13 +1,14 @@
-import { usePremium } from "@/context/PremiumContext";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
   Keyboard,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   RefreshControl,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -27,7 +28,7 @@ export default function ExploreScreen() {
   const [searched, setSearched] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const { isPremium } = usePremium();
+  const [dailySurname, setDailySurname] = useState<any>(null);
 
   const searchSurname = async () => {
     if (!query.trim()) return;
@@ -57,6 +58,7 @@ export default function ExploreScreen() {
     setQuery("");
     setResult(null);
     setSearched(false);
+    await fetchDailySurname();
     setRefreshing(false);
   };
 
@@ -64,6 +66,49 @@ export default function ExploreScreen() {
     const words = text.split(" ");
     return words.slice(0, 15).join(" ") + "...";
   };
+
+  // ⭐ 20 - 40 სიტყვიანი ტექსტი დღის გვარისთვის
+  const getDailyText = (text: string) => {
+    const words = text.split(" ");
+
+    if (words.length <= 20) {
+      return words.slice(0, 20).join(" ");
+    }
+
+    return words.slice(0, 40).join(" ") + "...";
+  };
+
+  const fetchDailySurname = async () => {
+    const today = new Date();
+    const day = today.getDate();
+
+    const { data, error } = await supabase
+      .from("surnames")
+      .select("*")
+      .range(day, day);
+
+    if (!error && data && data.length > 0) {
+      setDailySurname(data[0]);
+    }
+  };
+
+  const shareSurname = async () => {
+    if (!dailySurname) return;
+
+    const message = `${dailySurname.surname}
+
+${getDailyText(dailySurname.full_history)}
+
+იხილე მეტი აპში`;
+
+    await Share.share({
+      message,
+    });
+  };
+
+  useEffect(() => {
+    fetchDailySurname();
+  }, []);
 
   return (
     <KeyboardAvoidingView
@@ -85,12 +130,12 @@ export default function ExploreScreen() {
         }
       >
         <Text style={styles.title}>მოიძიე შენი გვარის ისტორია</Text>
-        
+
         <Text style={styles.subtitle}>
-  შენი გვარი მხოლოდ სიტყვა არ არის — ეს არის შენი ფესვები,
-  წარმოშობა და იდენტობა. გაიგე ვინ იყვნენ შენი წინაპრები
-  და რა მემკვიდრეობა მოგყვება უკან.
-</Text>
+          შენი გვარი მხოლოდ სიტყვა არ არის — ეს არის შენი ფესვები,
+          წარმოშობა და იდენტობა. გაიგე ვინ იყვნენ შენი წინაპრები
+          და რა მემკვიდრეობა მოგყვება უკან.
+        </Text>
 
         <TextInput
           placeholder="შეიყვანე გვარი..."
@@ -122,24 +167,18 @@ export default function ExploreScreen() {
 
             <Text style={styles.surname}>{result.surname}</Text>
 
-            {!isPremium ? (
-              <>
-                <Text style={styles.history}>
-                  {getPreviewText(result.full_history)}
-                </Text>
+            <Text style={styles.history}>
+              {getPreviewText(result.full_history)}
+            </Text>
 
-                <View style={styles.premiumCard}>
-                  <Text style={styles.premiumTitle}>⭐ PRIME კონტენტი</Text>
-                  <Text style={styles.premiumText}>
-                    გვარის სრული ისტორიის სანახავად გახდით PRIME წევრი
-                  </Text>
-                </View>
-              </>
-            ) : (
-              <Text style={styles.history}>
-                {result.full_history}
-              </Text>
-            )}
+            <TouchableOpacity
+              style={styles.codeButton}
+              onPress={() =>
+                Linking.openURL("https://www.giftgrb.ge/#registry")
+              }
+            >
+              <Text style={styles.codeText}>კოდის მიღება</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -149,8 +188,34 @@ export default function ExploreScreen() {
               ასეთი გვარი ბაზაში არ მოიძებნა.
             </Text>
 
-            <TouchableOpacity style={styles.orderButton}>
-              <Text style={styles.orderText}>შეუკვეთე კვლევა</Text>
+            <TouchableOpacity
+              style={styles.orderButton}
+              onPress={() =>
+                Linking.openURL("https://www.giftgrb.ge/gvari.html")
+              }
+            >
+              <Text style={styles.orderText}>მოიკვლიე შენი გვარი</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {dailySurname && (
+          <View style={styles.dailyCard}>
+            <Text style={styles.dailyTitle}>⭐ დღის გვარი</Text>
+
+            <Text style={styles.dailySurname}>
+              {dailySurname.surname}
+            </Text>
+
+            <Text style={styles.dailyText}>
+              {getDailyText(dailySurname.full_history)}
+            </Text>
+
+            <TouchableOpacity
+              style={styles.shareButton}
+              onPress={shareSurname}
+            >
+              <Text style={styles.shareText}>გაზიარება</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -225,25 +290,16 @@ const styles = StyleSheet.create({
     lineHeight: 26,
     textAlign: "justify",
   },
-  premiumCard: {
-    marginTop: 15,
-    backgroundColor: "#0F172A",
-    borderRadius: 14,
-    padding: 15,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.4)",
+  codeButton: {
+    backgroundColor: "#D4AF37",
+    marginTop: 20,
+    padding: 12,
+    borderRadius: 12,
     alignItems: "center",
   },
-  premiumTitle: {
-    color: "#D4AF37",
-    fontWeight: "800",
-    fontSize: 16,
-    marginBottom: 5,
-  },
-  premiumText: {
-    color: "#E2D9C5",
-    fontSize: 14,
-    textAlign: "center",
+  codeText: {
+    color: "#000",
+    fontWeight: "700",
   },
   notFoundBox: {
     marginTop: 40,
@@ -266,10 +322,52 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
   subtitle: {
-  fontSize: 15,
-  color: "#9CA3AF",
-  textAlign: "center",
-  marginBottom: 25,
-  lineHeight: 22,
-},
+    fontSize: 15,
+    color: "#9CA3AF",
+    textAlign: "center",
+    marginBottom: 25,
+    lineHeight: 22,
+  },
+
+  dailyCard: {
+    marginTop: 40,
+    backgroundColor: "#111827",
+    padding: 20,
+    borderRadius: 18,
+  },
+
+  dailyTitle: {
+    color: "#D4AF37",
+    textAlign: "center",
+    marginBottom: 8,
+    fontWeight: "800",
+    fontSize: 16,
+  },
+
+  dailySurname: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#D4AF37",
+    textAlign: "center",
+    marginBottom: 10,
+  },
+
+  dailyText: {
+    color: "#E5E7EB",
+    textAlign: "center",
+    lineHeight: 22,
+  },
+
+  shareButton: {
+    backgroundColor: "#D4AF37",
+    marginTop: 15,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+
+  shareText: {
+    color: "#000",
+    fontWeight: "700",
+  },
 });

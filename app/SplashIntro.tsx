@@ -1,17 +1,14 @@
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
-    Animated,
-    Dimensions,
-    Easing,
-    ImageBackground,
-    StyleSheet,
-    View
+  Animated,
+  Dimensions,
+  Easing,
+  StyleSheet,
+  View
 } from "react-native";
 
 const { height } = Dimensions.get("window");
-
-// 📌 შენი ჩაგდებული დროშა
 const FLAG = require("../assets/gallery/6.webp");
 
 export default function SplashIntro() {
@@ -30,14 +27,22 @@ export default function SplashIntro() {
   const w3Opacity = useRef(new Animated.Value(0)).current;
 
   const pulse = useRef(new Animated.Value(1)).current;
+  const bgScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+
+    Animated.timing(bgScale, {
+      toValue: 1.15,
+      duration: 4000,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start();
+
     Animated.sequence([
       animateWord(w1Y, w1Scale, w1Opacity),
       animateWord(w2Y, w2Scale, w2Opacity),
       animateWord(w3Y, w3Scale, w3Opacity),
 
-      // Subtle premium pulse
       Animated.sequence([
         Animated.timing(pulse, {
           toValue: 1.03,
@@ -55,6 +60,7 @@ export default function SplashIntro() {
         router.replace("/(tabs)");
       }, 600);
     });
+
   }, []);
 
   function animateWord(y: any, scale: any, opacity: any) {
@@ -80,72 +86,89 @@ export default function SplashIntro() {
   }
 
   return (
-    <ImageBackground source={FLAG} style={styles.background} resizeMode="cover">
+    <View style={styles.container}>
       
-      {/* Dark cinematic overlay */}
-      <View style={styles.overlay} />
+      <Animated.Image
+        source={FLAG}
+        style={[
+          styles.background,
+          {
+            transform: [{ scale: bgScale }],
+          },
+        ]}
+        resizeMode="cover"
+      />
 
-      {/* Vignette edge darkening */}
+      <View style={styles.overlay} />
       <View style={styles.vignette} />
 
-      <Animated.Text
-        style={[
-          styles.text,
-          {
-            opacity: w1Opacity,
-            transform: [
-              { translateY: w1Y },
-              { scale: Animated.multiply(w1Scale, pulse) },
-            ],
-          },
-        ]}
-      >
-        გახსოვდეს
-      </Animated.Text>
+      <View style={styles.centerContent}>
+        <Animated.Text
+          style={[
+            styles.text,
+            {
+              opacity: w1Opacity,
+              transform: [
+                { translateY: w1Y },
+                { scale: Animated.multiply(w1Scale, pulse) },
+              ],
+            },
+          ]}
+        >
+          ზოგადი
+        </Animated.Text>
 
-      <Animated.Text
-        style={[
-          styles.text,
-          {
-            opacity: w2Opacity,
-            transform: [
-              { translateY: w2Y },
-              { scale: Animated.multiply(w2Scale, pulse) },
-            ],
-          },
-        ]}
-      >
-        საქართველოს
-      </Animated.Text>
+        <Animated.Text
+          style={[
+            styles.text,
+            {
+              opacity: w2Opacity,
+              transform: [
+                { translateY: w2Y },
+                { scale: Animated.multiply(w2Scale, pulse) },
+              ],
+            },
+          ]}
+        >
+          განათლების
+        </Animated.Text>
 
-      <Animated.Text
-        style={[
-          styles.text,
-          {
-            opacity: w3Opacity,
-            transform: [
-              { translateY: w3Y },
-              { scale: Animated.multiply(w3Scale, pulse) },
-            ],
-          },
-        ]}
-      >
-        ისტორია
-      </Animated.Text>
-    </ImageBackground>
+        <Animated.Text
+          style={[
+            styles.text,
+            {
+              opacity: w3Opacity,
+              transform: [
+                { translateY: w3Y },
+                { scale: Animated.multiply(w3Scale, pulse) },
+              ],
+            },
+          ]}
+        >
+          სივრცე
+        </Animated.Text>
+      </View>
+
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  background: {
+  container: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
   },
 
+  background: {
+    position: "absolute",
+    width: "100%",
+    height: "100%",
+  },
+
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.65)", // ჩაბნელება
+    backgroundColor: "rgba(0,0,0,0.65)",
   },
 
   vignette: {
@@ -153,12 +176,18 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.4)",
   },
 
+  centerContent: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
   text: {
-    fontSize: 46,
+    fontSize: 36, // 🔥 კიდევ შემცირდა
     color: "#FFFFFF",
     fontWeight: "900",
     letterSpacing: 2,
-    marginVertical: 14,
+    marginVertical: 12,
+    textAlign: "center",
     textShadowColor: "rgba(0,0,0,0.8)",
     textShadowOffset: { width: 0, height: 3 },
     textShadowRadius: 20,

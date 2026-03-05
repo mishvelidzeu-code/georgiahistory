@@ -1,39 +1,69 @@
 import { usePremium } from "@/context/PremiumContext";
+import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { supabase } from "../services/supabase";
 
 export default function SubscriptionScreen() {
-  const { isPremium } = usePremium();
+  const { isPremium, refreshPremium } = usePremium();
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     checkUser();
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      checkUser();
+      refreshPremium();
+    }, [])
+  );
 
   const checkUser = async () => {
     const { data } = await supabase.auth.getUser();
     setUser(data?.user ?? null);
   };
 
-  const handlePress = () => {
+  const handlePress = async () => {
     if (!user) {
-      // 1. ჯერ ვხურავთ PRIME-ის მოდალურ ფანჯარას
-      router.back(); 
-      
-      // 2. მცირე დაყოვნებით (რომ ჩაკეცვის ანიმაცია დასრულდეს) გადავდივართ პროფილზე
-      setTimeout(() => {
-        router.push("/(tabs)/profile");
-      }, 150); 
-      
+      router.replace("/profile");
       return;
     }
 
-    // 🔥 აქ მოგვიანებით ჩაერთვება გადახდა
-    alert("აქ ჩაერთვება PRIME გადახდის სისტემა");
+    try {
+      setLoading(true);
+
+      const expireDate = new Date();
+      expireDate.setMonth(expireDate.getMonth() + 1);
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          is_premium: true,
+          premium_until: expireDate.toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (error) {
+        console.log(error);
+        return;
+      }
+
+      await refreshPremium();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -42,48 +72,63 @@ export default function SubscriptionScreen() {
       style={styles.container}
     >
       <ScrollView contentContainerStyle={styles.content}>
-        
-        <Text style={styles.badge}>PRIME</Text>
+        <Text style={styles.badge}>
+  <Text style={{ color: "#FFFFFF" }}>უფასო </Text>
+  PRIME
+</Text>
 
-        <Text style={styles.title}>
-          გახსენი ისტორიის დახურული კარი
-        </Text>
+        <Text style={styles.title}>აღმოაჩინე მეტი</Text>
 
         <Text style={styles.subtitle}>
-          მიიღე წვდომა იმ ინფორმაციაზე,
-          რომელსაც სხვა მომხმარებლები ვერ ხედავენ.
+          გახდი PRIME ერთი კლიკით და მიიღე სრული წვდომა
+          ისტორიებსა და ინფორმაციაზე 1 თვის განმავლობაში — უფასოდ.
         </Text>
 
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>რატომ ირჩევენ PRIME-ს?</Text>
+          <Text style={styles.cardTitle}>რას მიიღებ PRIME-ით</Text>
 
           <Text style={styles.item}>
-            • აღმოაჩინე საქართველოს ისტორიული მოვლენები ზუსტად დღევანდელ თარიღზე
+            • საქართველოს ისტორიული მოვლენები დღევანდელ თარიღზე
           </Text>
 
           <Text style={styles.item}>
-            • გაეცანი მსოფლიო ისტორიის გარდამტეხ ფაქტებს
+            • მსოფლიო ისტორიის მნიშვნელოვანი ფაქტები
           </Text>
 
           <Text style={styles.item}>
-            • ნახე ცნობილი ადამიანები ამ დღეს
+            • რა მოხდა მეცნიერებაში 
           </Text>
 
           <Text style={styles.item}>
-            • მოძებნე შენი გვარის ისტორიული პირველწყარო და აღმოაჩინე ფესვები
+            • ცნობილი ადამიანები ამ დღეს
+          </Text>
+
+          <Text style={styles.item}>
+            • გვარების მცირე ისტორია და წარმოშობა დღეში ერთი გვარი
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.button} onPress={handlePress}>
-          <Text style={styles.buttonText}>
-            {user ? "გახდი PRIME ახლავე" : "გახდი PRIME"}
-          </Text>
-        </TouchableOpacity>
+        {isPremium ? (
+          <Text style={styles.active}>შენ უკვე PRIME წევრი ხარ</Text>
+        ) : (
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handlePress}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text style={styles.buttonText}>
+  ✨ გააქტიურე <Text style={{ color: "#FFFFFF" }}>Free</Text>
+</Text>
+            )}
+          </TouchableOpacity>
+        )}
 
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace("/(tabs)" as any)}>
           <Text style={styles.close}>დახურვა</Text>
         </TouchableOpacity>
-
       </ScrollView>
     </LinearGradient>
   );
@@ -93,11 +138,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+
   content: {
     padding: 30,
     paddingTop: 80,
     alignItems: "center",
   },
+
   badge: {
     backgroundColor: "#D4AF37",
     color: "#000",
@@ -108,6 +155,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     letterSpacing: 1,
   },
+
   title: {
     fontSize: 26,
     fontWeight: "800",
@@ -115,12 +163,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     textAlign: "center",
   },
+
   subtitle: {
     fontSize: 15,
     color: "#E5E7EB",
     marginBottom: 30,
     textAlign: "center",
+    lineHeight: 22,
   },
+
   card: {
     width: "100%",
     backgroundColor: "#111827",
@@ -128,37 +179,45 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 30,
   },
+
   cardTitle: {
     color: "#D4AF37",
     fontWeight: "700",
     marginBottom: 15,
     fontSize: 16,
   },
+
   item: {
     color: "#F3F4F6",
     marginBottom: 10,
     fontSize: 14,
     lineHeight: 20,
   },
+
   button: {
     backgroundColor: "#D4AF37",
     paddingVertical: 15,
     paddingHorizontal: 60,
     borderRadius: 14,
     marginBottom: 15,
-    shadowColor: "#D4AF37",
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-    elevation: 8,
   },
+
   buttonText: {
     color: "#000",
     fontWeight: "800",
     fontSize: 16,
   },
+
+  active: {
+    color: "#22C55E",
+    fontWeight: "700",
+    fontSize: 16,
+    marginBottom: 20,
+  },
+
   close: {
     color: "#9CA3AF",
     marginTop: 10,
-    padding: 10, // ცოტა padding დავუმატე, რომ თითის დაჭერა უფრო მარტივი იყოს
+    padding: 10,
   },
 });

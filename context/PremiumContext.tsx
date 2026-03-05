@@ -24,14 +24,38 @@ export const PremiumProvider = ({ children }: { children: React.ReactNode }) => 
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("is_premium")
+      .select("is_premium, premium_until")
       .eq("id", userData.user.id)
       .single();
 
-    if (!error && data) {
-      setIsPremium(data.is_premium);
+    if (error || !data) {
+      setIsPremium(false);
+      return;
+    }
+
+    if (!data.is_premium) {
+      setIsPremium(false);
+      return;
+    }
+
+    if (!data.premium_until) {
+      setIsPremium(false);
+      return;
+    }
+
+    const now = new Date();
+    const expire = new Date(data.premium_until);
+
+    if (expire > now) {
+      setIsPremium(true);
     } else {
       setIsPremium(false);
+
+      // ავტომატურად გათიშვა თუ ვადა გასულია
+      await supabase
+        .from("profiles")
+        .update({ is_premium: false })
+        .eq("id", userData.user.id);
     }
   };
 

@@ -1,12 +1,14 @@
 import { usePremium } from "@/context/PremiumContext";
 import { useFocusEffect } from "@react-navigation/native";
-import * as AuthSession from "expo-auth-session";
+import { decode } from "base64-arraybuffer";
+import * as ImagePicker from "expo-image-picker";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   StyleSheet,
   Text,
   TextInput,
@@ -20,17 +22,34 @@ WebBrowser.maybeCompleteAuthSession();
 export default function ProfileScreen() {
   const { isPremium, refreshPremium } = usePremium();
   const [user, setUser] = useState<any>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const router = useRouter();
 
-  // ახალი state-ები ლოგინისა და რეგისტრაციისთვის
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(false);
   const [isLoginMode, setIsLoginMode] = useState(true);
 
   const checkUser = async () => {
     const { data } = await supabase.auth.getUser();
     setUser(data.user ?? null);
+
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("avatar_url")
+        .eq("id", data.user.id)
+        .single();
+
+      if (profile?.avatar_url) {
+        const { data: publicData } = supabase.storage
+          .from("avatars")
+          .getPublicUrl(profile.avatar_url);
+
+        setAvatarUrl(publicData.publicUrl + `?t=${Date.now()}`);
+      }
+    }
   };
 
   useFocusEffect(
@@ -39,100 +58,119 @@ export default function ProfileScreen() {
     }, [])
   );
 
+  // 🔥 გასწორებული uploadAvatar (სხვას არაფერს შევხებივარ)
+  const uploadAvatar = async () => {
+    if (!user) return;
+
+    const permissionResult =
+      await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert("საჭიროა წვდომა გალერიაზე");
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"] as any,
+      allowsEditing: true,
+      quality: 0.8,
+      base64: true,
+    });
+
+    if (result.canceled) return;
+
+    const image = result.assets[0];
+
+    if (!image.base64) {
+      Alert.alert("Upload error", "Base64 ვერ მივიღეთ");
+      return;
+    }
+
+    const filePath = `${user.id}.jpg`;
+
+    const { error } = await supabase.storage
+      .from("avatars")
+      .upload(
+        filePath,
+        decode(image.base64), // ✅ აქ არის სწორი გზა
+        {
+          contentType: "image/jpeg",
+          upsert: true,
+        }
+      );
+
+    if (error) {
+      Alert.alert("Upload error", error.message);
+      return;
+    }
+
+    await supabase
+      .from("profiles")
+      .update({ avatar_url: filePath })
+      .eq("id", user.id);
+
+    const { data } = supabase.storage
+      .from("avatars")
+      .getPublicUrl(filePath);
+
+    setAvatarUrl(data.publicUrl + `?t=${Date.now()}`);
+  };
+
   const logout = async () => {
     await supabase.auth.signOut();
     setUser(null);
     refreshPremium();
   };
 
-  // ✅ Email / Password ავტორიზაცია და რეგისტრაცია
   const handleEmailAuth = async () => {
     if (!email || !password) {
       Alert.alert("შეცდომა", "გთხოვთ, შეავსოთ ყველა ველი");
       return;
     }
 
+    if (!isLoginMode && !fullName) {
+      Alert.alert("შეცდომა", "გთხოვთ მიუთითოთ სახელი");
+      return;
+    }
+
     setLoading(true);
+
     try {
       if (isLoginMode) {
-        // ავტორიზაცია
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
       } else {
-        // რეგისტრაცია
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
         });
         if (error) throw error;
-        Alert.alert(
-          "წარმატება 🎉",
-          "ანგარიში შეიქმნა! გთხოვთ შეამოწმოთ თქვენი ელ.ფოსტა ვერიფიკაციისთვის (თუ ჩართული გაქვთ)."
-        );
+
+        if (data.user) {
+          await supabase.from("profiles").insert({
+            id: data.user.id,
+            full_name: fullName,
+            is_premium: false,
+          });
+        }
+
+        Alert.alert("წარმატება 🎉", "ანგარიში შეიქმნა!");
       }
-      // წარმატების შემდეგ ვაახლებთ მომხმარებლის სტატუსს
+
       await checkUser();
+      refreshPremium();
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Authentication failed";
-      Alert.alert("შეცდომა", errorMessage);
+      Alert.alert("შეცდომა", "Authentication failed");
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Google Login ინტეგრირებული პროფილში
-  const handleGoogleLogin = async () => {
-    try {
-      const redirectTo = AuthSession.makeRedirectUri({
-        path: "callback",
-      });
-
-      console.log("დამაბრუნებელი ლინკი არის:", redirectTo);
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-      if (!data?.url) return;
-
-      const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
-
-      if (result.type === "success" && result.url) {
-        const url = new URL(result.url);
-        const paramsString = url.hash ? url.hash.substring(1) : url.search.substring(1);
-        const params = new URLSearchParams(paramsString);
-        
-        const access_token = params.get("access_token");
-        const refresh_token = params.get("refresh_token");
-
-        if (access_token && refresh_token) {
-          await supabase.auth.setSession({
-            access_token,
-            refresh_token,
-          });
-          await checkUser();
-          refreshPremium();
-        }
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : "Login failed";
-      Alert.alert("შეცდომა", errorMessage);
-    }
-  };
-
   const activatePremium = async () => {
-    if (!user) {
-      Alert.alert("ჯერ უნდა შეხვიდე სისტემაში");
-      return;
-    }
+    if (!user) return;
 
     await supabase
       .from("profiles")
@@ -149,49 +187,39 @@ export default function ProfileScreen() {
         <Text style={styles.title}>პროფილი</Text>
 
         {user ? (
-          /* =========================================
-             ავტორიზებული მომხმარებლის ინტერფეისი
-             ========================================= */
           <>
-            <View style={styles.avatarWrapper}>
-              <View style={[
-                styles.avatarGlow,
-                isPremium && styles.premiumGlow
-              ]}>
+            <TouchableOpacity
+              style={styles.avatarWrapper}
+              onPress={uploadAvatar}
+            >
+              {avatarUrl ? (
+                <Image source={{ uri: avatarUrl }} style={styles.avatar} />
+              ) : (
                 <View style={styles.avatar} />
-              </View>
-            </View>
+              )}
+              <Text style={styles.changePhoto}>ფოტოს შეცვლა</Text>
+            </TouchableOpacity>
 
-            <Text style={styles.email}>
-              {user.email}
-            </Text>
+            <Text style={styles.email}>{user.email}</Text>
 
-            <View style={[
-              styles.statusBadge,
-              isPremium && styles.statusPremium
-            ]}>
-              <Text style={[
-                styles.statusText,
-                isPremium && styles.statusTextPremium
-              ]}>
-                {isPremium ? "⭐ PRIME წევრი" : "Free წევრი"}
-              </Text>
-            </View>
-
-            <View style={styles.divider} />
-
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => router.push("/profile-details")}
+            >
               <Text style={styles.menuText}>ჩემი პროფილი</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuItem}>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => router.push("/settings")}
+            >
               <Text style={styles.menuText}>პარამეტრები</Text>
             </TouchableOpacity>
 
             {!isPremium && (
               <TouchableOpacity
                 style={styles.premiumButton}
-                onPress={activatePremium}
+                onPress={() => router.push("/subscription")}
               >
                 <Text style={styles.premiumButtonText}>გახდი PRIME</Text>
               </TouchableOpacity>
@@ -202,13 +230,20 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </>
         ) : (
-          /* =========================================
-             არაავტორიზებული მომხმარებლის (ლოგინ) ინტერფეისი
-             ========================================= */
           <>
             <Text style={styles.authTitle}>
               {isLoginMode ? "ავტორიზაცია" : "რეგისტრაცია"}
             </Text>
+
+            {!isLoginMode && (
+              <TextInput
+                style={styles.input}
+                placeholder="სახელი და გვარი"
+                placeholderTextColor="#9CA3AF"
+                value={fullName}
+                onChangeText={setFullName}
+              />
+            )}
 
             <TextInput
               style={styles.input}
@@ -217,7 +252,6 @@ export default function ProfileScreen() {
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
-              keyboardType="email-address"
             />
 
             <TextInput
@@ -229,8 +263,8 @@ export default function ProfileScreen() {
               secureTextEntry
             />
 
-            <TouchableOpacity 
-              style={styles.primaryAuthButton} 
+            <TouchableOpacity
+              style={styles.primaryAuthButton}
               onPress={handleEmailAuth}
               disabled={loading}
             >
@@ -245,24 +279,9 @@ export default function ProfileScreen() {
 
             <TouchableOpacity onPress={() => setIsLoginMode(!isLoginMode)}>
               <Text style={styles.toggleText}>
-                {isLoginMode 
-                  ? "არ გაქვთ ანგარიში? დარეგისტრირდით" 
+                {isLoginMode
+                  ? "არ გაქვთ ანგარიში? დარეგისტრირდით"
                   : "უკვე გაქვთ ანგარიში? შედით"}
-              </Text>
-            </TouchableOpacity>
-
-            <View style={styles.orDivider}>
-              <View style={styles.orLine} />
-              <Text style={styles.orText}>ან</Text>
-              <View style={styles.orLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.loginButton}
-              onPress={handleGoogleLogin} 
-            >
-              <Text style={styles.loginText}>
-                Continue with Google
               </Text>
             </TouchableOpacity>
           </>
@@ -283,8 +302,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     padding: 30,
     backgroundColor: "#111827",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
   },
   title: {
     fontSize: 26,
@@ -297,53 +314,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-  avatarGlow: {
-    padding: 6,
-    borderRadius: 60,
-  },
-  premiumGlow: {
-    shadowColor: "#D4AF37",
-    shadowOpacity: 0.8,
-    shadowRadius: 20,
-    elevation: 10,
-  },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: "#0F172A",
     borderWidth: 3,
     borderColor: "#D4AF37",
+  },
+  changePhoto: {
+    color: "#9CA3AF",
+    marginTop: 8,
   },
   email: {
     color: "#FFFFFF",
     fontSize: 17,
     fontWeight: "600",
     textAlign: "center",
-  },
-  statusBadge: {
-    marginTop: 10,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 20,
-    alignSelf: "center",
-    backgroundColor: "rgba(255,255,255,0.08)",
-  },
-  statusPremium: {
-    backgroundColor: "#D4AF37",
-  },
-  statusText: {
-    fontSize: 13,
-    color: "#9CA3AF",
-  },
-  statusTextPremium: {
-    color: "#000",
-    fontWeight: "700",
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
-    marginVertical: 25,
+    marginBottom: 20,
   },
   menuItem: {
     paddingVertical: 14,
@@ -374,66 +362,32 @@ const styles = StyleSheet.create({
     color: "#E5E7EB",
     fontWeight: "700",
   },
-  
-  /* ახალი სტილები ლოგინ/რეგისტრაციისთვის */
   authTitle: {
     color: "#FFFFFF",
     fontSize: 18,
-    fontWeight: "600",
     textAlign: "center",
     marginBottom: 20,
   },
   input: {
     backgroundColor: "rgba(255,255,255,0.05)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.1)",
     borderRadius: 12,
     padding: 15,
     color: "#FFF",
     marginBottom: 15,
-    fontSize: 16,
   },
   primaryAuthButton: {
     backgroundColor: "#D4AF37",
     padding: 15,
     borderRadius: 14,
     alignItems: "center",
-    marginTop: 5,
   },
   primaryAuthText: {
     color: "#000",
     fontWeight: "800",
-    fontSize: 16,
   },
   toggleText: {
     color: "#9CA3AF",
     textAlign: "center",
     marginTop: 18,
-    fontSize: 14,
-  },
-  orDivider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 20,
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  orText: {
-    color: "#9CA3AF",
-    paddingHorizontal: 15,
-    fontSize: 14,
-  },
-  loginButton: {
-    padding: 15,
-    borderRadius: 14,
-    backgroundColor: "#fff",
-    alignItems: "center",
-  },
-  loginText: {
-    color: "#000",
-    fontWeight: "800",
   },
 });

@@ -48,7 +48,6 @@ Notifications.setNotificationHandler({
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<any>(null);
-  const [expanded, setExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const { isPremium } = usePremium();
@@ -143,11 +142,7 @@ export default function HomeScreen() {
     );
   }
 
-  const content = data?.georgia_content
-    ? expanded
-      ? data.georgia_content
-      : data.georgia_content.substring(0, 500) + "..."
-    : null;
+  
 
   return (
     <View style={styles.mainContainer}>
@@ -156,7 +151,7 @@ export default function HomeScreen() {
 
         <View style={styles.header}>
           <Text style={styles.headerText}>
-            დღეს საქართველოს ისტორიაში 🇬🇪
+            დღე საქართველოს ისტორიაში 🇬🇪
           </Text>
         </View>
 
@@ -180,24 +175,20 @@ export default function HomeScreen() {
 
             <View style={styles.divider} />
 
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => data?.georgia_content && setExpanded(!expanded)}
-            >
-              {content ? (
-                <>
-                  {renderHighlightedText(content)}
-
-                  <Text style={styles.readMore}>
-                    {expanded ? "დაკეცე ▲" : "წაიკითხე სრულად ▼"}
-                  </Text>
-                </>
-              ) : (
-                <Text style={[styles.cardBodyText, { textAlign: "center", opacity: 0.7 }]}>
-                  ინფორმაცია ამ დღისათვის ჯერ არ არის დამატებული.
-                </Text>
-              )}
-            </TouchableOpacity>
+            <View>
+  {data?.georgia_content ? (
+    renderHighlightedText(data.georgia_content)
+  ) : (
+    <Text
+      style={[
+        styles.cardBodyText,
+        { textAlign: "center", opacity: 0.7 },
+      ]}
+    >
+      ინფორმაცია ამ დღისათვის ჯერ არ არის დამატებული.
+    </Text>
+  )}
+</View>
 
           </ScrollView>
         </View>
@@ -276,13 +267,7 @@ const styles = StyleSheet.create({
   color: "#D4AF37",
   fontWeight: "800",
 },
-  readMore: {
-    marginTop: 12,
-    color: "#D4AF37",
-    fontSize: 14,
-    textAlign: "center",
-    fontWeight: "600",
-  },
+  
   gallerySection: { paddingHorizontal: 20, marginBottom: 20 },
   galleryTitle: {
     color: "#E2D9C5",

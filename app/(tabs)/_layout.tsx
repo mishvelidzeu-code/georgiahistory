@@ -1,21 +1,29 @@
+import { useThemeCustom } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
 import React from "react";
 
 export default function TabLayout() {
+  const { theme } = useThemeCustom();
+
+  const background = theme === "dark" ? "#111827" : "#FFFFFF";
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+
         tabBarStyle: {
-          backgroundColor: "#111827",
+          backgroundColor: background,
           borderTopWidth: 1,
           borderTopColor: "rgba(212,175,55,0.3)",
           height: 65,
         },
+
         tabBarActiveTintColor: "#D4AF37",
         tabBarInactiveTintColor: "#6B7280",
+
         tabBarLabelStyle: {
           fontSize: 12,
           fontWeight: "600",
@@ -48,7 +56,16 @@ export default function TabLayout() {
         }}
       />
 
-      {/* ✅ ეს დაამატე */}
+      <Tabs.Screen
+        name="science"
+        options={{
+          title: "მეცნიერება",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="flask-outline" size={22} color={color} />
+          ),
+        }}
+      />
+
       <Tabs.Screen
         name="profile"
         options={{
@@ -58,7 +75,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
     </Tabs>
   );
 }

@@ -1,3 +1,5 @@
+import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -5,6 +7,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View
 } from "react-native";
 import { supabase } from "../../services/supabase";
@@ -12,6 +15,8 @@ import { supabase } from "../../services/supabase";
 const IMAGE = require("../../assets/gallery/1.webp");
 
 export default function BirthsScreen() {
+  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState("");
 
@@ -56,17 +61,23 @@ export default function BirthsScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      <Image source={IMAGE} style={styles.image} />
+    <View style={{ flex: 1 }}>
+      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={36} color="#D4AF37" />
+      </TouchableOpacity>
 
-      <Text style={styles.title}>
-        ვინ დაიბადნენ და ვინ გარდაიცვალნენ ამ დღეს
-      </Text>
+      <ScrollView style={styles.container}>
+        <Image source={IMAGE} style={styles.image} />
 
-      <Text style={styles.text}>
-        {content || "ამ დღის მონაცემები ჯერ არ არის ატვირთული."}
-      </Text>
-    </ScrollView>
+        <Text style={styles.title}>
+          ვინ დაიბადნენ და ვინ გარდაიცვალნენ ამ დღეს
+        </Text>
+
+        <Text style={styles.text}>
+          {content || "ამ დღის მონაცემები ჯერ არ არის ატვირთული."}
+        </Text>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -75,7 +86,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#0A0D14",
     padding: 20,
+    paddingTop: 110,
   },
+  backButton: {
+  position: "absolute",
+  top: 40,
+  left: 15,
+  zIndex: 10,
+  padding: 12,
+  borderRadius: 30,
+},
   image: {
     width: "100%",
     height: 200,
