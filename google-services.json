@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "615951168531",
+    "project_id": "georgia-history-app",
+    "storage_bucket": "georgia-history-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:615951168531:android:d19c9957e07456ba0d7be6",
+        "android_client_info": {
+          "package_name": "com.mishvela.georgiahistoryapp"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "615951168531-dm0p2bodrjhrcsigr339ikka610en2va.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCusOsWJGBfiuRHiuoKWMZH5vXXNbU3rjY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "615951168531-dm0p2bodrjhrcsigr339ikka610en2va.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
