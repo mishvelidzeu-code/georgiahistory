@@ -1,4 +1,5 @@
 import { usePremium } from "@/context/PremiumContext";
+import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
@@ -7,10 +8,11 @@ import {
   ActivityIndicator,
   Alert,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 import Purchases from 'react-native-purchases';
 import { supabase } from "../services/supabase";
@@ -22,6 +24,7 @@ export default function SubscriptionScreen() {
   const [loading, setLoading] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);
 
+  // --- ლოგიკა (უცვლელი) ---
   useEffect(() => {
     checkUser();
     fetchOfferings();
@@ -63,26 +66,19 @@ export default function SubscriptionScreen() {
 
     try {
       setLoading(true);
-
-      // 1. ჯერ ვცადოთ აღდგენა
       let latestCustomerInfo = await Purchases.restorePurchases();
       let hasPremium = typeof latestCustomerInfo.entitlements.active['Premium'] !== "undefined";
 
-      // 2. თუ აღდგენამ არ უშველა, მაშინ ვცადოთ ყიდვა
       if (!hasPremium) {
         const result = await Purchases.purchasePackage(packages[0]);
-        latestCustomerInfo = result.customerInfo; // ვაახლებთ ინფოს ყიდვის შემდეგ
+        latestCustomerInfo = result.customerInfo;
         if (typeof latestCustomerInfo.entitlements.active['Premium'] !== "undefined") {
           hasPremium = true;
         }
       }
 
-      // 3. თუ პრემიუმი დადასტურდა
       if (hasPremium) {
-        // ვიღებთ ზუსტ დროს RevenueCat-იდან (ითვალისწინებს 14 დღიან უფასო პერიოდსაც)
         const expirationDate = latestCustomerInfo.entitlements.active['Premium'].expirationDate;
-
-        // განვაახლოთ Supabase
         const { error } = await supabase
           .from("profiles")
           .update({
@@ -91,24 +87,16 @@ export default function SubscriptionScreen() {
           })
           .eq("id", user.id);
 
-        if (error) {
-          console.log("Supabase Error:", error);
-          Alert.alert("შეცდომა", "ბაზის განახლება ვერ მოხერხდა");
-          return;
-        }
+        if (error) throw error;
 
-        // განვაახლოთ კონტექსტი
         await refreshPremium();
-        
         Alert.alert("წარმატება", "14 დღიანი უფასო პერიოდი გააქტიურებულია!", [
           { text: "OK", onPress: () => router.replace("/(tabs)") }
         ]);
       } else {
         Alert.alert("ინფორმაცია", "აქტიური გამოწერა ვერ მოიძებნა.");
       }
-
     } catch (e: any) {
-      console.log("Error Details:", e);
       if (!e.userCancelled) {
         Alert.alert("შეცდომა", e.message || "ოპერაცია ვერ შესრულდა");
       }
@@ -117,158 +105,164 @@ export default function SubscriptionScreen() {
     }
   };
 
+  // ახალი ფუნქცია გამოწერის აღდგენისთვის (Apple-ის მოთხოვნა)
+  const handleRestore = async () => {
+    if (!user) {
+      router.replace("/profile");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const latestCustomerInfo = await Purchases.restorePurchases();
+      const hasPremium = typeof latestCustomerInfo.entitlements.active['Premium'] !== "undefined";
+
+      if (hasPremium) {
+        const expirationDate = latestCustomerInfo.entitlements.active['Premium'].expirationDate;
+        const { error } = await supabase
+          .from("profiles")
+          .update({
+            is_premium: true,
+            premium_until: expirationDate,
+          })
+          .eq("id", user.id);
+
+        if (error) throw error;
+
+        await refreshPremium();
+        Alert.alert("წარმატება", "თქვენი PRIME სტატუსი აღდგენილია!");
+        router.replace("/(tabs)");
+      } else {
+        Alert.alert("ინფორმაცია", "აქტიური გამოწერა ვერ მოიძებნა.");
+      }
+    } catch (e: any) {
+      Alert.alert("შეცდომა", "აღდგენა ვერ მოხერხდა.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // დამხმარე კომპონენტი სიისთვის
+  const FeatureItem = ({ text }: { text: string }) => (
+    <View style={styles.featureItem}>
+      <Ionicons name="checkmark-circle" size={20} color="#D4AF37" />
+      <Text style={styles.itemText}>{text}</Text>
+    </View>
+  );
+
   return (
-    <LinearGradient
-      colors={["#0A0D14", "#111827", "#0A0D14"]}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.badge}>
-          <Text style={{ color: "#FFFFFF" }}>უფასო </Text>
-          PRIME
-        </Text>
+    <LinearGradient colors={["#0A0D14", "#111827", "#0A0D14"]} style={styles.container}>
+      <StatusBar barStyle="light-content" />
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        
+        {/* პრემიუმ ბეიჯი */}
+        <View style={styles.badgeContainer}>
+          <LinearGradient colors={["#D4AF37", "#AA8E56"]} style={styles.badgeGradient}>
+            <Text style={styles.badgeText}>უფასო 14 დღე</Text>
+          </LinearGradient>
+        </View>
 
-        <Text style={styles.title}>აღმოაჩინე მეტი</Text>
-
+        <Ionicons name="diamond-outline" size={50} color="#D4AF37" style={{ marginBottom: 15 }} />
+        <Text style={styles.title}>გახდი PRIME წევრი</Text>
         <Text style={styles.subtitle}>
-          გახდი PRIME ერთი კლიკით და მიიღე სრული წვდომა
-          ისტორიებსა და ინფორმაციაზე 1 თვის განმავლობაში — სრულიად უფასოდ.
+          გახსენი ისტორიის ყველა კარი. მიიღე სრული წვდომა უნიკალურ მასალებზე, ბიოგრაფიებსა და მეცნიერულ აღმოჩენებზე.
         </Text>
 
+        {/* Features Card */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>რას მიიღებ PRIME-ით</Text>
+          {/* დეკორატიული კუთხეები */}
+          <View style={[styles.corner, { top: 15, left: 15, borderTopWidth: 1, borderLeftWidth: 1 }]} />
+          <View style={[styles.corner, { top: 15, right: 15, borderTopWidth: 1, borderRightWidth: 1 }]} />
 
-          <Text style={styles.item}>
-            • საქართველოს ისტორიული მოვლენები დღევანდელ თარიღზე
-          </Text>
+          <Text style={styles.cardTitle}>პრემიუმ შესაძლებლობები:</Text>
 
-          <Text style={styles.item}>
-            • მსოფლიო ისტორიის მნიშვნელოვანი ფაქტები
-          </Text>
-
-          <Text style={styles.item}>
-            • რა მოხდა მეცნიერებაში 
-          </Text>
-
-          <Text style={styles.item}>
-            • ცნობილი ადამიანები ამ დღეს
-          </Text>
-
-          <Text style={styles.item}>
-            • გვარების მცირე ისტორია და წარმოშობა დღეში ერთი გვარი
-          </Text>
+          <FeatureItem text="საქართველოს სრული მატიანე" />
+          <FeatureItem text="გლობალური ისტორიული ფაქტები" />
+          <FeatureItem text="მეცნიერული აღმოჩენების არქივი" />
+          <FeatureItem text="სახელოვანი ადამიანების ბიოგრაფიები" />
+          <FeatureItem text="გვარების ისტორია და წარმოშობა" />
         </View>
 
         {isPremium ? (
-          <Text style={styles.active}>შენ უკვე PRIME წევრი ხარ</Text>
+          <View style={styles.activeContainer}>
+            <Ionicons name="ribbon" size={24} color="#22C55E" />
+            <Text style={styles.active}>თქვენ უკვე PRIME წევრი ხართ</Text>
+          </View>
         ) : (
           <TouchableOpacity
             style={styles.button}
             onPress={handlePress}
             disabled={loading}
+            activeOpacity={0.8}
           >
-            {loading ? (
-              <ActivityIndicator color="#000" />
-            ) : (
-              <Text style={styles.buttonText}>
-                ✨ დაიწყე 1 თვიანი <Text style={{ color: "#FFFFFF" }}>Free</Text>
-              </Text>
-            )}
+            <LinearGradient colors={["#D4AF37", "#AA8E56"]} style={styles.buttonGradient}>
+              {loading ? (
+                <ActivityIndicator color="#000" />
+              ) : (
+                <Text style={styles.buttonText}>
+                  ✨ დაიწყე უფასო პერიოდი
+                </Text>
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity onPress={() => router.replace("/(tabs)" as any)}>
-          <Text style={styles.close}>დახურვა</Text>
+        {/* აღდგენის ღილაკი Apple-ის რევიუერებისთვის */}
+        <TouchableOpacity onPress={handleRestore} style={styles.restoreBtn}>
+          <Text style={styles.restoreText}>გამოწერის აღდგენა (Restore Purchases)</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => router.replace("/(tabs)" as any)} style={styles.closeBtn}>
+          <Text style={styles.closeText}>დახურვა</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.footerNote}>
+          გაუქმება შესაძლებელია ნებისმიერ დროს.
+        </Text>
       </ScrollView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
+  container: { flex: 1 },
+  content: { padding: 30, paddingTop: 70, alignItems: "center" },
+  
+  badgeContainer: { marginBottom: 20 },
+  badgeGradient: { paddingHorizontal: 16, paddingVertical: 6, borderRadius: 20 },
+  badgeText: { color: "#000", fontWeight: "900", fontSize: 12, textTransform: "uppercase", letterSpacing: 1 },
 
-  content: {
-    padding: 30,
-    paddingTop: 80,
-    alignItems: "center",
-  },
-
-  badge: {
-    backgroundColor: "#D4AF37",
-    color: "#000",
-    fontWeight: "900",
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginBottom: 20,
-    letterSpacing: 1,
-  },
-
-  title: {
-    fontSize: 26,
-    fontWeight: "800",
-    color: "#D4AF37",
-    marginBottom: 12,
-    textAlign: "center",
-  },
-
-  subtitle: {
-    fontSize: 15,
-    color: "#E5E7EB",
-    marginBottom: 30,
-    textAlign: "center",
-    lineHeight: 22,
-  },
+  title: { fontSize: 30, fontWeight: "900", color: "#E2D9C5", textAlign: "center", marginBottom: 12 },
+  subtitle: { fontSize: 15, color: "#9CA3AF", textAlign: "center", marginBottom: 35, lineHeight: 22, paddingHorizontal: 10 },
 
   card: {
     width: "100%",
-    backgroundColor: "#111827",
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 30,
+    backgroundColor: "rgba(17, 24, 39, 0.7)",
+    borderRadius: 28,
+    padding: 25,
+    marginBottom: 40,
+    borderWidth: 1,
+    borderColor: "rgba(212, 175, 55, 0.2)",
   },
+  corner: { position: 'absolute', width: 15, height: 15, borderColor: 'rgba(212, 175, 55, 0.4)' },
+  cardTitle: { color: "#D4AF37", fontWeight: "800", marginBottom: 20, fontSize: 16, textTransform: 'uppercase', letterSpacing: 1 },
+  
+  featureItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 15 },
+  itemText: { color: "#F3F4F6", marginLeft: 12, fontSize: 14, fontWeight: "500", flex: 1 },
 
-  cardTitle: {
-    color: "#D4AF37",
-    fontWeight: "700",
-    marginBottom: 15,
-    fontSize: 16,
-  },
+  button: { width: "100%", height: 60, borderRadius: 16, overflow: 'hidden', marginBottom: 5, elevation: 8, shadowColor: "#D4AF37", shadowOpacity: 0.3, shadowRadius: 10 },
+  buttonGradient: { flex: 1, justifyContent: 'center', alignItems: 'center', flexDirection: 'row' },
+  buttonText: { color: "#000", fontWeight: "900", fontSize: 16 },
 
-  item: {
-    color: "#F3F4F6",
-    marginBottom: 10,
-    fontSize: 14,
-    lineHeight: 20,
-  },
+  activeContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  active: { color: "#22C55E", fontWeight: "800", fontSize: 16, marginLeft: 10 },
 
-  button: {
-    backgroundColor: "#D4AF37",
-    paddingVertical: 15,
-    paddingHorizontal: 60,
-    borderRadius: 14,
-    marginBottom: 15,
-  },
+  // სტილები აღდგენის ღილაკისთვის
+  restoreBtn: { padding: 10, marginTop: 10 },
+  restoreText: { color: "#9CA3AF", fontSize: 12, textDecorationLine: 'underline' },
 
-  buttonText: {
-    color: "#000",
-    fontWeight: "800",
-    fontSize: 16,
-  },
-
-  active: {
-    color: "#22C55E",
-    fontWeight: "700",
-    fontSize: 16,
-    marginBottom: 20,
-  },
-
-  close: {
-    color: "#9CA3AF",
-    marginTop: 10,
-    padding: 10,
-  },
+  closeBtn: { padding: 15 },
+  closeText: { color: "#6B7280", fontSize: 14, fontWeight: "600" },
+  
+  footerNote: { color: "#4B5563", fontSize: 11, marginTop: 10, textAlign: 'center' }
 });

@@ -1,279 +1,231 @@
 import { useHistory } from "@/context/HistoryContext";
 import { Audio } from "expo-av";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
   Easing,
+  StatusBar,
   StyleSheet,
+  Text,
   View
 } from "react-native";
 import { supabase } from "../services/supabase";
 
-const { height } = Dimensions.get("window");
+const { height, width } = Dimensions.get("window");
 const FLAG = require("../assets/gallery/6.webp");
 
-export default function SplashIntro() {
+// ნაწილაკების კომპონენტი (ატმოსფეროსთვის)
+const DustParticle = ({ delay }: { delay: number }) => {
+  const moveAnim = useRef(new Animated.Value(0)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.delay(delay),
+        Animated.parallel([
+          Animated.timing(opacityAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+          Animated.timing(moveAnim, {
+            toValue: -100,
+            duration: 7000,
+            easing: Easing.linear,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.timing(opacityAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
+      ])
+    ).start();
+  }, []);
+
+  const randomX = Math.random() * width;
+  const randomY = Math.random() * height;
+
+  return (
+    <Animated.View
+      style={[
+        styles.particle,
+        {
+          left: randomX,
+          top: randomY,
+          opacity: opacityAnim,
+          transform: [{ translateY: moveAnim }],
+        },
+      ]}
+    />
+  );
+};
+
+export default function SplashIntro() {
   const router = useRouter();
   const { refreshHistory } = useHistory();
 
-  const w1Y = useRef(new Animated.Value(height)).current;
-  const w2Y = useRef(new Animated.Value(height)).current;
-  const w3Y = useRef(new Animated.Value(height)).current;
-
-  const w1Scale = useRef(new Animated.Value(2)).current;
-  const w2Scale = useRef(new Animated.Value(2)).current;
-  const w3Scale = useRef(new Animated.Value(2)).current;
-
-  const w1Opacity = useRef(new Animated.Value(0)).current;
-  const w2Opacity = useRef(new Animated.Value(0)).current;
-  const w3Opacity = useRef(new Animated.Value(0)).current;
-
-  const bgScale = useRef(new Animated.Value(1)).current;
-  const bgTranslate = useRef(new Animated.Value(0)).current;
-
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ანიმაციები
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(1.4)).current; // იწყება ძალიან ახლოდან
+  const textReveal = useRef(new Animated.Value(0)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
 
-  const waitForSession = async () => {
-
-    let tries = 0;
-
-    while (tries < 10) {
-
-      const { data } = await supabase.auth.getSession();
-
-      if (data.session) {
-        return;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      tries++;
-
-    }
-
-  };
-
   useEffect(() => {
-
     const init = async () => {
-
-      await waitForSession();     // დაელოდე session-ს
-      await refreshHistory();     // მერე ჩატვირთე history
-      playSound();
-
+      try {
+        await playSound();
+        await waitForSession();
+        await refreshHistory();
+      } catch (e) {
+        console.log(e);
+      }
     };
 
     init();
 
-    Animated.timing(bgScale, {
-      toValue: 1.15,
-      duration: 5000,
-      easing: Easing.out(Easing.ease),
+    // 1. ფონისა და მთლიანი ეკრანის გამოჩენა
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 2000, useNativeDriver: true }),
+      Animated.timing(scaleAnim, {
+        toValue: 1.1,
+        duration: 8000,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // 2. ტექსტის "ელეგანტური" გამოჩენა
+    Animated.timing(textReveal, {
+      toValue: 1,
+      duration: 3000,
+      delay: 500,
       useNativeDriver: true,
-    }).start();
-
-    const parallax = Animated.loop(
-      Animated.sequence([
-        Animated.timing(bgTranslate, {
-          toValue: 15,
-          duration: 4000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(bgTranslate, {
-          toValue: -15,
-          duration: 4000,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
-    );
-
-    parallax.start();
-
-    Animated.sequence([
-      animateWord(w1Y, w1Scale, w1Opacity),
-      animateWord(w2Y, w2Scale, w2Opacity),
-      animateWord(w3Y, w3Scale, w3Opacity),
-    ]).start(() => {
-
-      timeoutRef.current = setTimeout(() => {
-        router.replace("/(tabs)");
-      }, 700);
-
+    }).start(() => {
+      // გადასვლა
+      setTimeout(() => {
+        Animated.timing(fadeAnim, { toValue: 0, duration: 1500, useNativeDriver: true }).start(() => {
+          router.replace("/(tabs)");
+        });
+      }, 3000);
     });
 
     return () => {
-
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-
       soundRef.current?.unloadAsync();
-
-      parallax.stop();
     };
+  }, []);
 
-  }, [router, refreshHistory]);
-
-  async function playSound() {
+  const playSound = async () => {
     try {
-
-      const { sound } = await Audio.Sound.createAsync(
-        require("../assets/sounds/intro.wav")
-      );
-
+      const { sound } = await Audio.Sound.createAsync(require("../assets/sounds/intro.wav"));
       soundRef.current = sound;
-
       await sound.playAsync();
+    } catch (e) {}
+  };
 
-    } catch (e) {
-      console.log("Intro sound error:", e);
+  const waitForSession = async () => {
+    let tries = 0;
+    while (tries < 10) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) return;
+      await new Promise((r) => setTimeout(r, 200));
+      tries++;
     }
-  }
-
-  function animateWord(
-    y: Animated.Value,
-    scale: Animated.Value,
-    opacity: Animated.Value
-  ) {
-    return Animated.parallel([
-      Animated.timing(y, {
-        toValue: 0,
-        duration: 900,
-        easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
-      }),
-      Animated.timing(scale, {
-        toValue: 1,
-        duration: 900,
-        easing: Easing.out(Easing.exp),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 700,
-        useNativeDriver: true,
-      }),
-    ]);
-  }
+  };
 
   return (
-    <View style={styles.container}>
+    <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
+      <StatusBar hidden />
 
+      {/* ფონი Ken Burns ეფექტით */}
       <Animated.Image
         source={FLAG}
-        style={[
-          styles.background,
-          {
-            transform: [
-              { scale: bgScale },
-              { translateX: bgTranslate }
-            ],
-          },
-        ]}
+        style={[styles.background, { transform: [{ scale: scaleAnim }] }]}
         resizeMode="cover"
       />
 
-      <View style={styles.overlay} />
-      <View style={styles.vignette} />
+      {/* ისტორიული ფილტრი (Sepia/Dark Overlay) */}
+      <LinearGradient
+        colors={["rgba(20, 15, 10, 0.4)", "rgba(0,0,0,0.7)", "rgba(0,0,0,0.95)"]}
+        style={StyleSheet.absoluteFill}
+      />
 
-      <View style={styles.centerContent}>
+      {/* "მტვრის" ნაწილაკები */}
+      {[...Array(15)].map((_, i) => (
+        <DustParticle key={i} delay={i * 500} />
+      ))}
 
-        <Animated.Text
-          style={[
-            styles.text,
-            {
-              opacity: w1Opacity,
-              transform: [
-                { translateY: w1Y },
-                { scale: w1Scale },
-              ],
-            },
-          ]}
-        >
-          ზოგადი
-        </Animated.Text>
-
-        <Animated.Text
-          style={[
-            styles.text,
-            {
-              opacity: w2Opacity,
-              transform: [
-                { translateY: w2Y },
-                { scale: w2Scale },
-              ],
-            },
-          ]}
-        >
-          განათლების
-        </Animated.Text>
-
-        <Animated.Text
-          style={[
-            styles.text,
-            {
-              opacity: w3Opacity,
-              transform: [
-                { translateY: w3Y },
-                { scale: w3Scale },
-              ],
-            },
-          ]}
-        >
-          სივრცე
-        </Animated.Text>
-
+      <View style={styles.content}>
+        <Animated.View style={{ opacity: textReveal }}>
+          <Text style={styles.subTitle}>საქართველოს მატიანე</Text>
+          <View style={styles.mainTitleContainer}>
+            <Text style={styles.titleLine}>ყოველდღიური</Text>
+            <Text style={[styles.titleLine, styles.goldText]}>ისტორია</Text>
+          </View>
+          <View style={styles.divider} />
+          <Text style={styles.tagline}>წარსული ცოცხლდება დღეს</Text>
+        </Animated.View>
       </View>
-
-    </View>
+    </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-
   container: {
+    flex: 1,
+    backgroundColor: "#000",
+  },
+  background: {
+    ...StyleSheet.absoluteFillObject,
+    width: width,
+    height: height,
+  },
+  particle: {
+    position: "absolute",
+    width: 2,
+    height: 2,
+    backgroundColor: "rgba(212, 175, 55, 0.4)",
+    borderRadius: 1,
+  },
+  content: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 30,
   },
-
-  background: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
+  subTitle: {
+    color: "#D4AF37",
+    fontSize: 14,
+    letterSpacing: 6,
+    textTransform: "uppercase",
+    textAlign: "center",
+    marginBottom: 10,
+    opacity: 0.8,
   },
-
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.65)",
-  },
-
-  vignette: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.4)",
-  },
-
-  centerContent: {
-    justifyContent: "center",
+  mainTitleContainer: {
     alignItems: "center",
   },
-
-  text: {
-    fontSize: 38,
-    fontWeight: "900",
+  titleLine: {
+    color: "#FFF",
+    fontSize: 42,
+    fontWeight: "300",
     letterSpacing: 2,
-    marginVertical: 12,
     textAlign: "center",
+  },
+  goldText: {
     color: "#D4AF37",
-    textShadowColor: "rgba(0,0,0,0.9)",
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 20,
-  }
-
+    fontWeight: "800",
+    marginTop: -5,
+  },
+  divider: {
+    width: 40,
+    height: 1,
+    backgroundColor: "#D4AF37",
+    marginVertical: 20,
+    alignSelf: "center",
+  },
+  tagline: {
+    color: "#888",
+    fontSize: 16,
+    fontStyle: "italic",
+    textAlign: "center",
+    letterSpacing: 1,
+  },
 });
