@@ -10,6 +10,7 @@
 create or replace function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.updated_at = timezone('utc', now());
@@ -344,3 +345,13 @@ using (bucket_id = 'avatars' and name = auth.uid()::text || '.jpg');
 comment on table public.profiles is 'მომხმარებლის პროფილი (auth.users-ზე მიბმული).';
 comment on table public.daily_history is 'დღიური ისტორიული კონტენტი, გასაღები MM-DD.';
 comment on table public.surnames is 'გვარების მატიანე — მონაცემები შემოვა giftgrb.ge-დან.';
+
+-- -----------------------------------------------------------------------------
+-- უფლებების გამკაცრება (Supabase security advisor-ის შენიშვნები)
+-- -----------------------------------------------------------------------------
+-- handle_new_user მხოლოდ ტრიგერია — /rest/v1/rpc-დან გამოძახება არავის სჭირდება.
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+
+-- is_admin() სჭირდება RLS პოლიტიკებს, ანუ authenticated-ს უნდა დარჩეს.
+revoke all on function public.is_admin() from public, anon;
+grant execute on function public.is_admin() to authenticated;

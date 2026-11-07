@@ -12,8 +12,9 @@ The app is **free** — the former PRIME/RevenueCat paywall was removed on 2026-
 - Expo owner/slug: `mishvela` / `georgia-history-app`, EAS project `10febd73-7545-4658-9a01-a2680d34f272`
 - Bundle id / package: `com.mishvela.georgiahistoryapp`
 - Git remote: `https://github.com/mishvelidzeu-code/georgiahistory.git` (branch `main`)
-- Supabase: **the old project `lgygwpvectxaxdiujjna` is deleted** (its host no longer resolves).
-  `services/supabase.ts` holds placeholders until the new project's URL + publishable key are pasted in.
+- Supabase project: `cnfpgzhdqjntvakisgvn` ("ყოველდღიური ისოტრია", region ap-southeast-1).
+  The previous project `lgygwpvectxaxdiujjna` was deleted. Schema, RLS and both edge functions are
+  deployed; only the Google/Apple auth providers and the function secrets are still unset.
 
 ## Commands
 
@@ -93,10 +94,16 @@ Gated: home, science, world-events, medicina, births. Open: quiz, გვარ�
 
 - **Uncommitted work tree.** `main` equals `origin/main` (`490b50f`); everything since then,
   including all of the 2026-11-07 work, is uncommitted and unpushed.
-- **Supabase must be re-created.** Until a new project's URL/key are in `services/supabase.ts`,
-  every network call fails. After creating it: run the migration, deploy both functions, set
-  `CRON_SECRET` + `OPENAI_API_KEY`, enable Google and Apple providers, and add
-  `georgiahistoryapp://login-callback` to the allowed redirect URLs.
+- **Supabase is wired but not finished.** Still to do in the Dashboard: enable the Google and
+  Apple auth providers (only `email` is on), set the `OPENAI_API_KEY` and `CRON_SECRET` function
+  secrets, add `georgiahistoryapp://login-callback` to the redirect URLs, and schedule the
+  `weekly-history-update` cron. Email confirmation is ON, so `signUp` returns no session until the
+  user clicks the link — the profile screen branches on `data.session` for that.
+- **All content tables are empty.** `daily_history` fills from the cron function; `science_events`,
+  `medicine_events`, `quiz_questions` need rows; `surnames` comes from giftgrb.ge later.
+- The project region is ap-southeast-1 (Singapore), which is far from Georgian users. Region cannot
+  be changed after creation — moving to eu-central-1 means a new project plus re-running the
+  migration.
 - **Stale native prebuild.** `android/` exists locally (gitignored) at `versionCode 1` /
   `versionName "1.0.0"` while `app.json` says `1.0.1` / `2`. `app.json` changes (icon, permissions,
   `usesAppleSignIn`) only reach a local build after `npx expo prebuild --clean`.

@@ -119,13 +119,22 @@ export default function ProfileScreen() {
         if (error) throw error;
       } else {
         // პროფილს `handle_new_user` ტრიგერი ქმნის — full_name მეტამონაცემებში გადადის.
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { data: { full_name: fullName } },
         });
         if (error) throw error;
-        Alert.alert("წარმატება", "ანგარიში შეიქმნა!");
+
+        // თუ ბაზაში ელფოსტის დადასტურება ჩართულია, სესია ჯერ არ არსებობს.
+        if (data.session) {
+          Alert.alert("წარმატება", "ანგარიში შეიქმნა!");
+        } else {
+          Alert.alert(
+            "დაადასტურე ელფოსტა",
+            "გამოგზავნილია დადასტურების ბმული. გახსენი ის და შემდეგ შედი აპლიკაციაში."
+          );
+        }
       }
     } catch { Alert.alert("შეცდომა", "ავტორიზაცია ვერ მოხერხდა"); }
     finally { setLoading(false); }

@@ -3,20 +3,17 @@ import { createClient } from "@supabase/supabase-js";
 import "react-native-url-polyfill/auto";
 
 /**
- * ⚠️ ახალი Supabase პროექტის მონაცემები აქ ჩაისვამს.
+ * Supabase პროექტი: „ყოველდღიური ისოტრია" (ref: cnfpgzhdqjntvakisgvn).
+ * ძველი პროექტი (lgygwpvectxaxdiujjna) წაშლილია.
  *
- * ძველი პროექტი (lgygwpvectxaxdiujjna) წაშლილია — მისი მისამართი აღარ იხსნება.
- * ახალი პროექტის შექმნის შემდეგ:
- *   Supabase Dashboard → Project Settings → API
- *   Project URL        → SUPABASE_URL
- *   publishable / anon key → SUPABASE_ANON_KEY
+ * ეს ორი მნიშვნელობა საჯაროა (აპლიკაციის ბილდშივე ხვდება) — დაცვას RLS უზრუნველყოფს.
+ * Dashboard → Project Settings → API.
  *
  * სურვილის შემთხვევაში იგივე მნიშვნელობები `.env`-შიც შეიძლება ეწეროს
- * (EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY) — მაშინ ქვემოთა
- * კონსტანტები უბრალოდ სათადარიგო მნიშვნელობებად რჩება.
+ * (EXPO_PUBLIC_SUPABASE_URL / EXPO_PUBLIC_SUPABASE_ANON_KEY).
  */
-const SUPABASE_URL = "https://PASTE-YOUR-PROJECT-REF.supabase.co";
-const SUPABASE_ANON_KEY = "PASTE-YOUR-PUBLISHABLE-KEY";
+const SUPABASE_URL = "https://cnfpgzhdqjntvakisgvn.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_kx5ko14X36sCQzn1KZsSeg_bYW03c3N";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? SUPABASE_URL;
 const supabaseAnonKey =
