@@ -8,7 +8,6 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
-  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -303,8 +302,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: "#D1D5DB",
     lineHeight: 28,
-    textAlign: "justify",
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    textAlign: "left",
   },
   emptyState: {
     alignItems: 'center',

@@ -8,7 +8,6 @@ import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
   Image,
-  Platform,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -230,8 +229,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: "#D1D5DB",
     lineHeight: 30,
-    textAlign: "justify",
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif',
+    textAlign: "left",
   },
 
   // Footer

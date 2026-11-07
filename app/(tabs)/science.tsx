@@ -6,7 +6,6 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   SafeAreaView,
   ScrollView,
   StatusBar,
@@ -223,8 +222,7 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: "#D1D5DB",
     lineHeight: 28,
-    textAlign: "justify",
-    fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', 
+    textAlign: "left",
   },
   emptyContainer: {
     alignItems: 'center',
