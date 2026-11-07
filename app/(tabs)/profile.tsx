@@ -35,13 +35,24 @@ export default function ProfileScreen() {
   const [isLoginMode, setIsLoginMode] = useState(true);
 
   useEffect(() => {
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       setTimeout(async () => {
-        if (session?.user) await checkUser(session.user);
-        else { setUser(null); setAvatarUrl(null); }
+        if (session?.user) {
+          await checkUser(session.user);
+
+          // ახლახან შევიდა — პროფილზე აღარ ვაჩერებთ, ისტორიას ვუხსნით.
+          // INITIAL_SESSION (აპის გაშვებისას აღდგენილი სესია) აქ არ ხვდება.
+          if (event === "SIGNED_IN") {
+            router.replace("/(tabs)");
+          }
+        } else {
+          setUser(null);
+          setAvatarUrl(null);
+        }
       }, 100);
     });
     return () => listener.subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkUser = async (currentUser: any) => {
