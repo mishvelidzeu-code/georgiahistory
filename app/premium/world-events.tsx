@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
   },
   heroDate: {
-    color: "#E2D9C5",
+    color: "#D4AF37",
     fontSize: 20,
     fontWeight: "900",
     marginTop: 6,
@@ -163,7 +163,7 @@ const styles = StyleSheet.create({
   },
   heroTitleContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 75,
   },
   heroLabel: {
     color: "#D4AF37",

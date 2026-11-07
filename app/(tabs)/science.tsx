@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   heroDate: {
-    color: "#E2D9C5",
+    color: "#D4AF37",
     fontSize: 20,
     fontWeight: "900",
     marginTop: 6,
