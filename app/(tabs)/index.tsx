@@ -27,18 +27,29 @@ const GALLERY_ITEMS = [
     title: "მსოფლიო ისტორია",
     subtitle: "გლობალური მნიშვნელობის ფაქტები",
     route: "/premium/world-events",
+    icon: null,
   },
   {
     image: require("../../assets/gallery/9.webp"),
     title: "მედიცინის მატიანე",
     subtitle: "მეცნიერული მიღწევები ამ დღეს",
     route: "/premium/medicina",
+    icon: null,
   },
   {
     image: require("../../assets/gallery/1.webp"),
     title: "პიროვნებები",
     subtitle: "ვინ დაიბადნენ და გარდაიცვალნენ",
     route: "/premium/births",
+    icon: null,
+  },
+  {
+    // ამ თემას შესაფერისი ფოტო ჯერ არ გვაქვს — გრადიენტი და ნიშანი ენაცვლება
+    image: null,
+    icon: "flask-outline" as const,
+    title: "მეცნიერული არქივი",
+    subtitle: "აღმოჩენები და გამოგონებები",
+    route: "/premium/science",
   },
 ] as const;
 
@@ -163,11 +174,25 @@ export default function HomeScreen() {
                 style={styles.galleryItem}
                 onPress={() => handleGalleryPress(item.route)}
               >
-                <Image source={item.image} style={styles.galleryImage} />
-                <LinearGradient
-                  colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.9)"]}
-                  style={StyleSheet.absoluteFill}
-                />
+                {item.image ? (
+                  <>
+                    <Image source={item.image} style={styles.galleryImage} />
+                    <LinearGradient
+                      colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.9)"]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <LinearGradient
+                      colors={["#1A2440", "#131A2B", "#0A0D14"]}
+                      style={StyleSheet.absoluteFill}
+                    />
+                    <View style={styles.galleryIconWrap}>
+                      <Ionicons name={item.icon ?? "flask-outline"} size={40} color="rgba(212,175,55,0.65)" />
+                    </View>
+                  </>
+                )}
 
                 {!user && !authLoading && (
                   <View style={styles.lockBadge}>
@@ -286,6 +311,12 @@ const styles = StyleSheet.create({
   galleryTextContainer: { position: "absolute", bottom: 12, left: 12, right: 12 },
   galleryText: { color: "#FFF", fontWeight: "800", fontSize: 13, marginBottom: 2 },
   gallerySubText: { color: "#D1D5DB", fontSize: 10, opacity: 0.8 },
+  galleryIconWrap: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingBottom: 26,
+  },
   lockBadge: {
     position: "absolute",
     top: 10,

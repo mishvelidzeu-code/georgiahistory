@@ -143,6 +143,23 @@ function load(name) {
     await upsert("medicine_events", rows, "month,day");
   }
 
+  // --- holidays ---
+  const holidays = load("holidays.json");
+  if (holidays) {
+    const rows = holidays
+      .map(({ month, day, title, description, is_dayoff }) => ({
+        month,
+        day,
+        title,
+        description,
+        is_dayoff,
+      }))
+      .filter((r) => r.title && r.description);
+
+    console.log(`holidays: ${rows.length} დღე`);
+    await upsert("holidays", rows, "month,day");
+  }
+
   // --- quiz_questions ---
   const quiz = load("quiz_questions.json");
   if (quiz) {

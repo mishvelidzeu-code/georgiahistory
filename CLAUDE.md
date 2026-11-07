@@ -46,11 +46,16 @@ integration and should be revoked in Google Cloud.
   mounts `NotificationBootstrap`, sets the notification handler. Only `(tabs)` is declared; every
   other route is auto-registered, so never declare a `<Stack.Screen>` for a file that doesn't exist.
 - `app/index.tsx` → `app/SplashIntro.tsx` → `router.replace("/(tabs)")`.
-- `app/(tabs)/` — 5 tabs: `index` (ისტორია), `explore` (გვარები), `science` (მეცნიერება),
+- `app/(tabs)/` — 5 tabs: `index` (ისტორია), `explore` (გვარები), `calendar` (კალენდარი),
   `quiz` (ქვიზი), `profile` (პროფილი). The tab bar adds `useSafeAreaInsets().bottom` to height
   and padding — without it the icons sit under the Android navigation bar.
-- `app/premium/` — `births.tsx`, `world-events.tsx`, `medicina.tsx`. The folder name is historical;
-  these screens are free, only login-gated.
+- `app/premium/` — `births.tsx`, `world-events.tsx`, `medicina.tsx`, `science.tsx`. The folder name
+  is historical; these screens are free, only login-gated, and each is opened from a card in the
+  home gallery. `science.tsx` has no photo — there is no fitting image in `assets/gallery/`, so its
+  hero is a gradient with a flask icon; drop a file in and wire it up when one exists.
+- `calendar.tsx` shows the month grid with holidays from the `holidays` table. Easter-based days
+  (წითელი პარასკევი, დიდი შაბათი, აღდგომა, შავი ორშაბათი) are **computed in the app**
+  (`orthodoxEaster`, Meeus Julian + 13 days), not stored.
 - Other routes: `settings.tsx`, `profile-details.tsx`, `login-callback.tsx`, `modal.tsx` (unused).
 
 ### Login gate

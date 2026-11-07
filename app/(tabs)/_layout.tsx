@@ -70,11 +70,11 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
-        name="science"
+        name="calendar"
         options={{
-          title: "მეცნიერება",
+          title: "კალენდარი",
           tabBarIcon: ({ color }) => (
-            <Ionicons name="flask-outline" size={22} color={color} />
+            <Ionicons name="calendar-outline" size={22} color={color} />
           ),
         }}
       />
