@@ -15,7 +15,7 @@ const path = require("path");
 
 const CONTENT = path.join(__dirname, "..", "content");
 const MAX_PER_DAY = 5;
-const MAX_QUESTION_LEN = 150;
+const MAX_QUESTION_LEN = 135;
 
 const DAYS_IN = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
@@ -43,17 +43,29 @@ function prevDay(m, d) {
   return [pm, DAYS_IN[pm - 1]];
 }
 
-/** "1918 — გამოცხადდა რესპუბლიკა." → { year: 1918, text: "გამოცხადდა რესპუბლიკა" } */
+/**
+ * "1918 — გამოცხადდა რესპუბლიკა." → { year: 1918, text: "გამოცხადდა რესპუბლიკა." }
+ *
+ * ტექსტი არასდროს იჭრება — გრძელი ფაქტი უბრალოდ არ გამოიყენება,
+ * თორემ შეკითხვა გრამატიკულად ინგრევა.
+ */
 function parseFact(line) {
   const m = line.match(/^(\d{3,4})\s*—\s*(.+)$/);
   if (!m) return null;
+
   const year = Number(m[1]);
-  let text = m[2].trim().replace(/\s+/g, " ").replace(/[.\s]+$/, "");
-  if (text.length < 25) return null;
-  if (text.length > MAX_QUESTION_LEN) {
-    const cut = text.slice(0, MAX_QUESTION_LEN);
-    text = cut.slice(0, cut.lastIndexOf(" "));
-  }
+  let text = m[2].trim().replace(/\s+/g, " ").replace(/\s+([,.])/g, "$1");
+
+  if (text.length < 25 || text.length > MAX_QUESTION_LEN) return null;
+
+  // ტექსტში მეორე წელი პასუხს ამხელს ან ერევა
+  if (/\d{3,4}/.test(text)) return null;
+
+  // დაუსრულებელი ან ჩამონათვალის ნაწყვეტი
+  if (/[,:;-]$/.test(text.replace(/\.$/, ""))) return null;
+
+  if (!/[.!?]$/.test(text)) text += ".";
+
   return { year, text };
 }
 
@@ -81,6 +93,14 @@ function seeded(seed) {
   };
 }
 
+/** სათაური შეკითხვისთვის: მოკლე, დაუჭრელი, წლის გარეშე */
+function cleanTitle(title) {
+  let t = String(title || "").trim().replace(/[….]+$/, "").replace(/\s+/g, " ");
+  if (t.length < 20 || t.length > MAX_QUESTION_LEN) return null;
+  if (/\d{3,4}/.test(t)) return null;
+  return t + ".";
+}
+
 const questions = [];
 
 for (let m = 1; m <= 12; m++) {
@@ -102,10 +122,16 @@ for (let m = 1; m <= 12; m++) {
     }
 
     const sci = science.get(pk);
-    if (sci?.year) facts.push({ year: sci.year, text: sci.title.replace(/[….]+$/, ""), category: "მეცნიერება" });
+    if (sci?.year) {
+      const f = cleanTitle(sci.title);
+      if (f) facts.push({ year: sci.year, text: f, category: "მეცნიერება" });
+    }
 
     const med = medicine.get(pk);
-    if (med?.year) facts.push({ year: med.year, text: med.title.replace(/[….]+$/, ""), category: "მედიცინა" });
+    if (med?.year) {
+      const f = cleanTitle(med.title);
+      if (f) facts.push({ year: med.year, text: f, category: "მედიცინა" });
+    }
 
     // კატეგორიები შერეული იყოს: 3 ისტორია + 1 მეცნიერება + 1 მედიცინა,
     // თუ რომელიმე აკლია — ისტორიით ივსება.
@@ -143,7 +169,9 @@ for (let m = 1; m <= 12; m++) {
         day: d,
         sort_order: i + 1,
         category: f.category,
-        question: `რომელ წელს ${f.text}?`,
+        question: `${f.text}
+
+რომელ წელს მოხდა?`,
         option1: options[0],
         option2: options[1],
         option3: options[2],
