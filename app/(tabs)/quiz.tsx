@@ -74,13 +74,15 @@ export default function QuizScreen() {
 
     async function fetchQuestions() {
         try {
+            // დღის ყველა კითხვა, თანმიმდევრობით (რაოდენობა დღეზეა დამოკიდებული)
             const { month, day } = getGeorgiaMonthDay();
             const { data, error } = await supabase
                 .from("quiz_questions")
                 .select("*")
                 .eq("day", day)
                 .eq("month", month)
-                .limit(4);
+                .order("sort_order", { ascending: true })
+                .limit(10);
             if (!error) setQuestions(data || []);
         } catch (e) { console.log(e); }
     }

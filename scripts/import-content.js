@@ -143,5 +143,27 @@ function load(name) {
     await upsert("medicine_events", rows, "month,day");
   }
 
+  // --- quiz_questions ---
+  const quiz = load("quiz_questions.json");
+  if (quiz) {
+    const rows = quiz
+      .map(({ month, day, sort_order, category, question, option1, option2, option3, option4, correct }) => ({
+        month,
+        day,
+        sort_order,
+        category,
+        question,
+        option1,
+        option2,
+        option3,
+        option4,
+        correct,
+      }))
+      .filter((r) => r.question && r.correct);
+
+    console.log(`quiz_questions: ${rows.length} კითხვა`);
+    await upsert("quiz_questions", rows, "month,day,sort_order");
+  }
+
   console.log("\n✅ მზადაა. შეამოწმე Table Editor-ში.\n");
 })();
