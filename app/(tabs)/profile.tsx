@@ -3,7 +3,7 @@ import { decode } from "base64-arraybuffer";
 import * as AppleAuthentication from 'expo-apple-authentication'; // დამატებული
 import * as ImagePicker from "expo-image-picker";
 import * as Linking from "expo-linking";
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
 import { useEffect, useState } from "react";
 import {
@@ -24,6 +24,7 @@ import { supabase } from "../../services/supabase";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<any>();
   const [user, setUser] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const router = useRouter();
@@ -42,8 +43,15 @@ export default function ProfileScreen() {
 
           // ახლახან შევიდა — პროფილზე აღარ ვაჩერებთ, ისტორიას ვუხსნით.
           // INITIAL_SESSION (აპის გაშვებისას აღდგენილი სესია) აქ არ ხვდება.
+          //
+          // ტაბს პირდაპირ ნავიგაციით ვცვლით: router.replace("/(tabs)") ვერაფერს
+          // აკეთებს, როცა აპი უკვე ამავე ჯგუფშია.
           if (event === "SIGNED_IN") {
-            router.replace("/(tabs)");
+            try {
+              navigation.navigate("index");
+            } catch {
+              router.replace("/(tabs)");
+            }
           }
         } else {
           setUser(null);
