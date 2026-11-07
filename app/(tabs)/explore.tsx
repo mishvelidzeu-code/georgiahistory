@@ -1,5 +1,6 @@
 import AuthGate from "@/components/auth-gate";
 import { useAuth } from "@/context/AuthContext";
+import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons"; // ექსპოზე მოყვება ავტომატურად
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
 import { useEffect, useState } from "react";
@@ -27,6 +28,9 @@ const IMAGE_MAP: any = {
 
 export default function ExploreScreen() {
   const { user, authLoading } = useAuth();
+  const [fontsLoaded] = useFonts({
+    GreatVibes: require("../../assets/fonts/GreatVibes-Regular.ttf"),
+  });
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -149,13 +153,12 @@ export default function ExploreScreen() {
           <Ionicons name="library-outline" size={32} color="#D4AF37" style={{ alignSelf: "center" }} />
 
           <TouchableOpacity
-            activeOpacity={0.8}
-            style={styles.siteBadge}
+            activeOpacity={0.7}
             onPress={() => Linking.openURL("https://www.gvarigen.ge/")}
           >
-            <Ionicons name="globe-outline" size={14} color="#D4AF37" />
-            <Text style={styles.siteBadgeText}>gvarigen.ge</Text>
-            <Ionicons name="open-outline" size={13} color="rgba(212,175,55,0.7)" />
+            <Text style={[styles.siteLink, fontsLoaded && styles.siteLinkCursive]}>
+              gvarigen.ge
+            </Text>
           </TouchableOpacity>
 
           <Text style={styles.title}>გვარების მატიანე</Text>
@@ -251,24 +254,23 @@ const styles = StyleSheet.create({
   centered: { justifyContent: "center" },
   
   headerSection: { marginBottom: 30, marginTop: 20 },
-  siteBadge: {
-    alignSelf: "center",
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    marginTop: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.35)",
-    backgroundColor: "rgba(212,175,55,0.08)",
-  },
-  siteBadgeText: {
+  // სათადარიგო სტილი, სანამ შრიფტი ჩაიტვირთება
+  siteLink: {
     color: "#D4AF37",
-    fontSize: 13,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontSize: 30,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 14,
+    letterSpacing: 1,
+  },
+  // გაკრული ხელწერა
+  siteLinkCursive: {
+    fontFamily: "GreatVibes",
+    fontSize: 48,
+    fontStyle: "normal",
+    lineHeight: 64,
+    letterSpacing: 2,
+    marginTop: 6,
   },
   title: {
     fontSize: 28,
