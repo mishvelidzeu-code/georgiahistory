@@ -44,9 +44,8 @@ const GALLERY_ITEMS = [
     icon: null,
   },
   {
-    // ამ თემას შესაფერისი ფოტო ჯერ არ გვაქვს — გრადიენტი და ნიშანი ენაცვლება
-    image: null,
-    icon: "flask-outline" as const,
+    image: require("../../assets/gallery/science.webp"),
+    icon: null,
     title: "მეცნიერული არქივი",
     subtitle: "აღმოჩენები და გამოგონებები",
     route: "/premium/science",

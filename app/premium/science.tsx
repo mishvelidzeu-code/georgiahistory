@@ -7,6 +7,7 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -15,6 +16,8 @@ import {
   View,
 } from "react-native";
 import { supabase } from "../../services/supabase";
+
+const IMAGE = require("../../assets/gallery/science.webp");
 
 export default function ScienceScreen() {
   const router = useRouter();
@@ -94,16 +97,13 @@ export default function ScienceScreen() {
       >
         {/* Hero */}
         <View style={styles.heroSection}>
+          <Image source={IMAGE} style={styles.heroImage} />
           <LinearGradient
-            colors={["#131A2B", "#0F1626", "#0A0D14"]}
-            style={StyleSheet.absoluteFill}
+            colors={["transparent", "rgba(10, 13, 20, 0.8)", "#0A0D14"]}
+            style={styles.heroOverlay}
           />
-
-          <View style={styles.heroRing}>
-            <Ionicons name="flask-outline" size={54} color="#D4AF37" />
-          </View>
-
           <View style={styles.heroTitleContainer}>
+            <Ionicons name="flask-outline" size={24} color="#D4AF37" />
             <Text style={styles.heroLabel}>მეცნიერული არქივი</Text>
             <Text style={styles.heroDate}>{getGeorgianDateLabel()}</Text>
           </View>
@@ -190,24 +190,18 @@ const styles = StyleSheet.create({
 
   heroSection: {
     width: "100%",
-    height: 320,
-    justifyContent: "center",
-    alignItems: "center",
+    height: 380,
+    justifyContent: "flex-end",
   },
-  heroRing: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.3)",
-    backgroundColor: "rgba(212,175,55,0.05)",
-    justifyContent: "center",
-    alignItems: "center",
+  heroImage: {
+    ...StyleSheet.absoluteFillObject,
+    width: "100%",
+    height: "100%",
   },
+  heroOverlay: { ...StyleSheet.absoluteFillObject },
   heroTitleContainer: {
     alignItems: "center",
-    marginTop: 18,
-    marginBottom: 55,
+    marginBottom: 75,
   },
   heroLabel: {
     color: "#D4AF37",
