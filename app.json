@@ -47,6 +47,14 @@
       ],
       "expo-web-browser",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#D4AF37",
+          "defaultChannel": "daily-history"
+        }
+      ],
+      [
         "expo-image-picker",
         {
           "photosPermission": "აპლიკაციას სჭირდება წვდომა ფოტოგალერიაზე, რათა შეძლოთ პროფილის სურათის ატვირთვა."

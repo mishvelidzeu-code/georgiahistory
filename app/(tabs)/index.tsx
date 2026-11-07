@@ -3,9 +3,8 @@ import { useHistory } from "@/context/HistoryContext";
 import { getGeorgianDateLabel } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
-import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -49,18 +48,11 @@ export default function HomeScreen() {
   const { user, authLoading } = useAuth();
   const { history, refreshHistory } = useHistory();
 
-  const initializeApp = useCallback(async () => {
-    try {
-      await Notifications.cancelAllScheduledNotificationsAsync();
-      await refreshHistory();
-    } catch (e) {
-      console.log("Init error:", e);
-    }
-  }, [refreshHistory]);
-
   useEffect(() => {
-    initializeApp();
-  }, [initializeApp]);
+    // ყურადღება: აქ `cancelAllScheduledNotificationsAsync()` აღარ იძახება —
+    // ის ყოველ გახსნაზე შლიდა ყოველდღიურ შეხსენებას.
+    refreshHistory();
+  }, [refreshHistory]);
 
   const renderHighlightedText = (text: string) => {
     const regex = /(\d+)/g;

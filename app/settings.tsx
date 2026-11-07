@@ -1,9 +1,16 @@
+import {
+  cancelDailyReminder,
+  clearPushToken,
+  getPermissionGranted,
+  isDailyReminderScheduled,
+  registerPushToken,
+  requestPermission,
+  scheduleDailyReminder,
+} from "@/services/notifications";
 import { Ionicons } from "@expo/vector-icons";
-import Constants from "expo-constants";
 import * as Device from "expo-device";
-import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -19,54 +26,56 @@ export default function SettingsScreen() {
   const router = useRouter();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [notificationsBusy, setNotificationsBusy] = useState(false);
 
-  // 🔔 Push Permission
+  // გადამრთველი რეალურ მდგომარეობას უნდა აჩვენებდეს, არა ყოველთვის გამორთულს.
+  useEffect(() => {
+    const load = async () => {
+      const granted = await getPermissionGranted();
+      setNotificationsEnabled(granted && (await isDailyReminderScheduled()));
+    };
+    load();
+  }, []);
+
+  // 🔔 შეტყობინებების ჩართვა/გამორთვა
   const handleNotificationToggle = async (value: boolean) => {
-    if (value) {
-      if (!Device.isDevice) {
-        Alert.alert("Push შეტყობინებები მუშაობს მხოლოდ რეალურ მოწყობილობაზე");
-        return;
-      }
+    if (notificationsBusy) return;
+    setNotificationsBusy(true);
 
-      const { status: existingStatus } =
-        await Notifications.getPermissionsAsync();
+    try {
+      const { data } = await supabase.auth.getUser();
+      const userId = data?.user?.id;
 
-      let finalStatus = existingStatus;
-
-      if (existingStatus !== "granted") {
-        const { status } = await Notifications.requestPermissionsAsync();
-        finalStatus = status;
-      }
-
-      if (finalStatus !== "granted") {
-        Alert.alert("Permission უარყოფილია");
-        return;
-      }
-
-      try {
-        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-        const token = (await Notifications.getExpoPushTokenAsync({ projectId }))
-          .data;
-
-        // 🔥 TOKEN შენახვა Supabase-ში
-        const { data } = await supabase.auth.getUser();
-
-        if (data?.user) {
-          await supabase
-            .from("profiles")
-            .update({ push_token: token })
-            .eq("id", data.user.id);
+      if (value) {
+        if (!Device.isDevice) {
+          Alert.alert("შეტყობინებები მუშაობს მხოლოდ რეალურ მოწყობილობაზე");
+          return;
         }
 
+        const granted = await requestPermission();
+
+        if (!granted) {
+          Alert.alert(
+            "ნებართვა არ არის",
+            "შეტყობინებები ტელეფონის პარამეტრებშია გამორთული. ჩართე აპლიკაციის პარამეტრებიდან."
+          );
+          return;
+        }
+
+        await scheduleDailyReminder();
+        if (userId) await registerPushToken(userId);
+
         setNotificationsEnabled(true);
-        Alert.alert("Push შეტყობინებები გააქტიურდა 🔔");
-      } catch (e) {
-        console.log("Push token error:", e);
-        Alert.alert("შეცდომა", "შეტყობინებების ჩართვა ვერ მოხერხდა");
+        Alert.alert("ჩართულია 🔔", "ყოველდღე 10:00-ზე შეგახსენებთ დღის ისტორიას.");
+      } else {
+        await cancelDailyReminder();
+        if (userId) await clearPushToken(userId);
+
+        setNotificationsEnabled(false);
+        Alert.alert("შეტყობინებები გაითიშა");
       }
-    } else {
-      setNotificationsEnabled(false);
-      Alert.alert("Push შეტყობინებები გაითიშა");
+    } finally {
+      setNotificationsBusy(false);
     }
   };
 
@@ -130,10 +139,14 @@ export default function SettingsScreen() {
 
         {/* Push Notifications */}
         <View style={styles.row}>
-          <Text style={styles.label}>Push შეტყობინებები</Text>
+          <View style={{ flex: 1, paddingRight: 15 }}>
+            <Text style={styles.label}>ყოველდღიური შეხსენება</Text>
+            <Text style={styles.labelHint}>ყოველდღე 10:00-ზე</Text>
+          </View>
           <Switch
             value={notificationsEnabled}
             onValueChange={handleNotificationToggle}
+            disabled={notificationsBusy}
             trackColor={{ true: "#D4AF37" }}
           />
         </View>
@@ -188,6 +201,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     color: "#FFF",
+  },
+  labelHint: {
+    fontSize: 13,
+    color: "#9CA3AF",
+    marginTop: 2,
   },
   button: {
     backgroundColor: "#D4AF37",

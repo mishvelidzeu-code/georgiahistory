@@ -1,4 +1,9 @@
 
+[functions.send-daily-push]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/send-daily-push/index.ts"
+
 [functions.delete-account]
 enabled = true
 verify_jwt = true
