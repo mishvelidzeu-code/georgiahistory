@@ -1,54 +1,54 @@
-import { useThemeCustom } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
 import React from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
 
-  const { theme } = useThemeCustom();
-
-  const background = theme === "dark" ? "#111827" : "#FFFFFF";
+  // ტაბ-ბარი სისტემის ნავიგაციის ზოლს ზემოდან უნდა დაადგეს, თორემ
+  // ანდროიდზე (edge-to-edge) იკონები ძალიან ჩაწეული ჩანს.
+  const bottomInset = Math.max(insets.bottom, 10);
 
   const handleTabPress = async () => {
     try {
       await Haptics.selectionAsync();
-    } catch (e) {
+    } catch {
       console.log("Haptics not supported");
     }
   };
 
   return (
-
     <Tabs
       screenOptions={{
-
         headerShown: false,
 
         tabBarStyle: {
-          backgroundColor: background,
+          backgroundColor: "#111827",
           borderTopWidth: 1,
           borderTopColor: "rgba(212,175,55,0.3)",
-          height: 65,
+          height: 60 + bottomInset,
+          paddingTop: 8,
+          paddingBottom: bottomInset,
         },
 
         tabBarActiveTintColor: "#D4AF37",
         tabBarInactiveTintColor: "#6B7280",
 
-        tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "600",
-          marginBottom: 5,
+        tabBarIconStyle: {
+          marginBottom: 2,
         },
 
+        tabBarLabelStyle: {
+          fontSize: 11,
+          fontWeight: "600",
+        },
       }}
-
       screenListeners={{
         tabPress: handleTabPress,
       }}
-
     >
-
       <Tabs.Screen
         name="index"
         options={{
@@ -98,8 +98,6 @@ export default function TabLayout() {
           ),
         }}
       />
-
     </Tabs>
-
   );
 }

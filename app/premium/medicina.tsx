@@ -1,10 +1,12 @@
+import AuthGate from "@/components/auth-gate";
+import { useAuth } from "@/context/AuthContext";
+import { getGeorgiaMonthDay } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   Platform,
   ScrollView,
@@ -16,7 +18,6 @@ import {
 } from "react-native";
 import { supabase } from "../../services/supabase";
 
-const { width } = Dimensions.get("window");
 const IMAGE = require("../../assets/gallery/9.webp");
 
 type MedicineEvent = {
@@ -27,23 +28,13 @@ type MedicineEvent = {
 
 export default function MedicineScreen() {
   const router = useRouter();
+  const { user, authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [event, setEvent] = useState<MedicineEvent | null>(null);
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const getGeorgiaDate = () => {
-    const now = new Date();
-    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
-    const georgia = new Date(utc + 4 * 60 * 60 * 1000);
-    return { month: georgia.getMonth() + 1, day: georgia.getDate() };
-  };
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
-      const { month, day } = getGeorgiaDate();
+      const { month, day } = getGeorgiaMonthDay();
       const { data, error } = await supabase
         .from("medicine_events")
         .select("*")
@@ -57,14 +48,34 @@ export default function MedicineScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  if (loading) {
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (user) {
+      fetchData();
+    } else {
+      setLoading(false);
+    }
+  }, [authLoading, user, fetchData]);
+
+  if (authLoading || (user && loading)) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#D4AF37" />
         <Text style={styles.loaderText}>არქივი იძებნება...</Text>
       </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthGate
+        title="მედიცინის არქივი ჩაკეტილია"
+        message="ამ დღის სამედიცინო აღმოჩენების წასაკითხად გაიარე ავტორიზაცია."
+        icon="medical-outline"
+      />
     );
   }
 

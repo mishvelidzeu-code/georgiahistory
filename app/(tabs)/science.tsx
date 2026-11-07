@@ -1,8 +1,9 @@
-import { usePremium } from "@/context/PremiumContext";
+import AuthGate from "@/components/auth-gate";
+import { useAuth } from "@/context/AuthContext";
+import { getGeorgianMonthName, getGeorgiaMonthDay } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Platform,
@@ -16,28 +17,14 @@ import {
 import { supabase } from "../../services/supabase";
 
 export default function ScienceScreen() {
-  const { isPremium, premiumLoading } = usePremium();
-  const router = useRouter();
+  const { user, authLoading } = useAuth();
 
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (premiumLoading) return;
-    if (!isPremium) {
-      setTimeout(() => {
-        router.replace("/subscription");
-      }, 0);
-      return;
-    }
-    fetchScience();
-  }, [premiumLoading, isPremium]);
-
-  const fetchScience = async () => {
+  const fetchScience = useCallback(async () => {
     try {
-      const today = new Date();
-      const month = today.getMonth() + 1;
-      const day = today.getDate();
+      const { month, day } = getGeorgiaMonthDay();
 
       const { data, error } = await supabase
         .from("science_events")
@@ -54,21 +41,37 @@ export default function ScienceScreen() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const getMonthName = (month: number) => {
-    const months = [
-      "იანვარი", "თებერვალი", "მარტი", "აპრილი", "მაისი", "ივნისი",
-      "ივლისი", "აგვისტო", "სექტემბერი", "ოქტომბერი", "ნოემბერი", "დეკემბერი",
-    ];
-    return months[month - 1];
-  };
+  useEffect(() => {
+    if (authLoading) return;
 
-  if (premiumLoading || loading) {
+    // შესვლის გარეშე კონტენტს არ ვტვირთავთ
+    if (user) {
+      fetchScience();
+    } else {
+      setLoading(false);
+    }
+  }, [authLoading, user, fetchScience]);
+
+  const getMonthName = (month: number) => getGeorgianMonthName(month);
+
+  if (authLoading || (user && loading)) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#D4AF37" />
       </View>
+    );
+  }
+
+  // შესვლის გარეშე მეცნიერული არქივი არ ჩანს
+  if (!user) {
+    return (
+      <AuthGate
+        title="მეცნიერული არქივი ჩაკეტილია"
+        message="ამ დღის მეცნიერული აღმოჩენების სანახავად გაიარე ავტორიზაცია — უფასოა."
+        icon="flask-outline"
+      />
     );
   }
 
@@ -213,7 +216,6 @@ const styles = StyleSheet.create({
     color: "#D1D5DB",
     lineHeight: 28,
     textAlign: "justify",
-    // Platform აქ გამოიყენება შრიფტისთვის
     fontFamily: Platform.OS === 'ios' ? 'Georgia' : 'serif', 
   },
   emptyContainer: {

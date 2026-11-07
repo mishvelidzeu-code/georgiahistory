@@ -1,3 +1,4 @@
+import { getGeorgiaDayStartIso, getGeorgiaMonthDay } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -34,6 +35,7 @@ export default function QuizScreen() {
         init();
         const stop = startCountdown();
         return stop;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     useEffect(() => {
@@ -72,12 +74,12 @@ export default function QuizScreen() {
 
     async function fetchQuestions() {
         try {
-            const today = new Date();
+            const { month, day } = getGeorgiaMonthDay();
             const { data, error } = await supabase
                 .from("quiz_questions")
                 .select("*")
-                .eq("day", today.getDate())
-                .eq("month", today.getMonth() + 1)
+                .eq("day", day)
+                .eq("month", month)
                 .limit(4);
             if (!error) setQuestions(data || []);
         } catch (e) { console.log(e); }
@@ -95,12 +97,12 @@ export default function QuizScreen() {
             const { data } = await supabase.auth.getSession();
             const user = data?.session?.user;
             if (!user) return;
-            const today = new Date().toISOString().split("T")[0];
+            // დღის საზღვარი საქართველოს დროით, არა UTC-ით
             const { data: played } = await supabase
                 .from("quiz_scores")
                 .select("*")
                 .eq("user_id", user.id)
-                .gte("created_at", today);
+                .gte("created_at", getGeorgiaDayStartIso());
             if (played && played.length > 0) {
                 setScore(played[0].score);
                 setFinished(true);

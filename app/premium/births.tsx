@@ -1,3 +1,5 @@
+import AuthGate from "@/components/auth-gate";
+import { useAuth } from "@/context/AuthContext";
 import { useHistory } from "@/context/HistoryContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
@@ -18,13 +20,24 @@ const IMAGE = require("../../assets/gallery/1.webp");
 
 export default function BirthsScreen() {
   const router = useRouter();
+  const { user, authLoading } = useAuth();
   const { history } = useHistory();
 
-  if (!history) {
+  if (authLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#D4AF37" />
       </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthGate
+        title="ბიოგრაფიები ჩაკეტილია"
+        message="ამ დღეს დაბადებული და გარდაცვლილი პიროვნებების სანახავად გაიარე ავტორიზაცია."
+        icon="ribbon-outline"
+      />
     );
   }
 

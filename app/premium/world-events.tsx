@@ -1,10 +1,11 @@
+import AuthGate from "@/components/auth-gate";
+import { useAuth } from "@/context/AuthContext";
 import { useHistory } from "@/context/HistoryContext";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
 import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
-  Dimensions,
   Image,
   Platform,
   ScrollView,
@@ -15,19 +16,29 @@ import {
   View
 } from "react-native";
 
-const { width } = Dimensions.get("window");
 const IMAGE = require("../../assets/gallery/4.webp");
 
 export default function WorldEventsScreen() {
   const router = useRouter();
+  const { user, authLoading } = useAuth();
   const { history } = useHistory();
 
-  if (!history) {
+  if (authLoading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#D4AF37" />
         <Text style={styles.loaderText}>მსოფლიო არქივი იხსნება...</Text>
       </View>
+    );
+  }
+
+  if (!user) {
+    return (
+      <AuthGate
+        title="მსოფლიო არქივი ჩაკეტილია"
+        message="ამ დღის გლობალური მოვლენების წასაკითხად გაიარე ავტორიზაცია."
+        icon="earth-outline"
+      />
     );
   }
 

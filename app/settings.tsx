@@ -1,5 +1,5 @@
-import { useThemeCustom } from "@/context/ThemeContext";
 import { Ionicons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import * as Device from "expo-device";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
@@ -17,7 +17,6 @@ import { supabase } from "../services/supabase";
 
 export default function SettingsScreen() {
   const router = useRouter();
-  const { theme, toggleTheme } = useThemeCustom();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
 
@@ -35,8 +34,7 @@ export default function SettingsScreen() {
       let finalStatus = existingStatus;
 
       if (existingStatus !== "granted") {
-        const { status } =
-          await Notifications.requestPermissionsAsync();
+        const { status } = await Notifications.requestPermissionsAsync();
         finalStatus = status;
       }
 
@@ -45,26 +43,27 @@ export default function SettingsScreen() {
         return;
       }
 
-      const token = (
-  await Notifications.getExpoPushTokenAsync({
-    projectId: "10febd73-7545-4658-9a01-a2680d34f272"
-  })
-).data;
+      try {
+        const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+        const token = (await Notifications.getExpoPushTokenAsync({ projectId }))
+          .data;
 
-      console.log("Expo Push Token:", token);
+        // 🔥 TOKEN შენახვა Supabase-ში
+        const { data } = await supabase.auth.getUser();
 
-      // 🔥 TOKEN შენახვა Supabase-ში
-      const { data } = await supabase.auth.getUser();
+        if (data?.user) {
+          await supabase
+            .from("profiles")
+            .update({ push_token: token })
+            .eq("id", data.user.id);
+        }
 
-      if (data?.user) {
-        await supabase
-          .from("profiles")
-          .update({ push_token: token })
-          .eq("id", data.user.id);
+        setNotificationsEnabled(true);
+        Alert.alert("Push შეტყობინებები გააქტიურდა 🔔");
+      } catch (e) {
+        console.log("Push token error:", e);
+        Alert.alert("შეცდომა", "შეტყობინებების ჩართვა ვერ მოხერხდა");
       }
-
-      setNotificationsEnabled(true);
-      Alert.alert("Push შეტყობინებები გააქტიურდა 🔔");
     } else {
       setNotificationsEnabled(false);
       Alert.alert("Push შეტყობინებები გაითიშა");
@@ -72,27 +71,37 @@ export default function SettingsScreen() {
   };
 
   const deleteAccount = async () => {
-    Alert.alert("ანგარიშის წაშლა", "დარწმუნებული ხარ?", [
-      { text: "გაუქმება", style: "cancel" },
-      {
-        text: "წაშლა",
-        style: "destructive",
-        onPress: async () => {
-          const { data } = await supabase.auth.getUser();
-          if (!data?.user) return;
+    Alert.alert(
+      "ანგარიშის წაშლა",
+      "ანგარიში და ყველა მონაცემი სამუდამოდ წაიშლება. ამის გაუქმება შეუძლებელია.",
+      [
+        { text: "გაუქმება", style: "cancel" },
+        {
+          text: "წაშლა",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // სრული წაშლა (auth.users-იდანაც) ხდება edge function-ით.
+              const { error } = await supabase.functions.invoke(
+                "delete-account"
+              );
+              if (error) throw error;
 
-          await supabase
-            .from("profiles")
-            .delete()
-            .eq("id", data.user.id);
+              await supabase.auth.signOut();
 
-          await supabase.auth.signOut();
-
-          Alert.alert("ანგარიში წაიშალა");
-          router.replace("/(tabs)");
+              Alert.alert("ანგარიში წაიშალა");
+              router.replace("/(tabs)");
+            } catch (e) {
+              console.log("Delete account error:", e);
+              Alert.alert(
+                "შეცდომა",
+                "ანგარიშის წაშლა ვერ მოხერხდა. სცადეთ მოგვიანებით."
+              );
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   };
 
   const logoutAll = async () => {
@@ -102,14 +111,8 @@ export default function SettingsScreen() {
   };
 
   return (
-    <SafeAreaView
-      style={[
-        styles.safeArea,
-        { backgroundColor: theme === "dark" ? "#0A0D14" : "#FFFFFF" },
-      ]}
-    >
+    <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        
         {/* Header */}
         <View style={styles.customHeader}>
           <TouchableOpacity
@@ -120,45 +123,14 @@ export default function SettingsScreen() {
             <Ionicons name="arrow-back" size={24} color="#D4AF37" />
           </TouchableOpacity>
 
-          <Text
-            style={[
-              styles.headerTitle,
-              { color: theme === "dark" ? "#D4AF37" : "#000" },
-            ]}
-          >
-            პარამეტრები
-          </Text>
+          <Text style={styles.headerTitle}>პარამეტრები</Text>
 
           <View style={{ width: 24 }} />
         </View>
 
-        {/* Dark Mode */}
-        <View style={styles.row}>
-          <Text
-            style={[
-              styles.label,
-              { color: theme === "dark" ? "#FFF" : "#000" },
-            ]}
-          >
-            Dark Mode
-          </Text>
-          <Switch
-            value={theme === "dark"}
-            onValueChange={toggleTheme}
-            trackColor={{ true: "#D4AF37" }}
-          />
-        </View>
-
         {/* Push Notifications */}
         <View style={styles.row}>
-          <Text
-            style={[
-              styles.label,
-              { color: theme === "dark" ? "#FFF" : "#000" },
-            ]}
-          >
-            Push შეტყობინებები
-          </Text>
+          <Text style={styles.label}>Push შეტყობინებები</Text>
           <Switch
             value={notificationsEnabled}
             onValueChange={handleNotificationToggle}
@@ -174,7 +146,9 @@ export default function SettingsScreen() {
           style={[styles.button, { backgroundColor: "#7F1D1D" }]}
           onPress={deleteAccount}
         >
-          <Text style={styles.buttonText}>ანგარიშის წაშლა</Text>
+          <Text style={[styles.buttonText, { color: "#FFF" }]}>
+            ანგარიშის წაშლა
+          </Text>
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -184,6 +158,7 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
+    backgroundColor: "#0A0D14",
   },
   container: {
     flex: 1,
@@ -202,6 +177,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: "800",
+    color: "#D4AF37",
   },
   row: {
     flexDirection: "row",
@@ -211,6 +187,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: 16,
+    color: "#FFF",
   },
   button: {
     backgroundColor: "#D4AF37",

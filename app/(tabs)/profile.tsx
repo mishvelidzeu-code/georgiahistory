@@ -1,9 +1,7 @@
-import { usePremium } from "@/context/PremiumContext";
 import { Ionicons } from "@expo/vector-icons";
 import { decode } from "base64-arraybuffer";
 import * as AppleAuthentication from 'expo-apple-authentication'; // დამატებული
 import * as ImagePicker from "expo-image-picker";
-import { LinearGradient } from "expo-linear-gradient";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import * as WebBrowser from "expo-web-browser";
@@ -26,7 +24,6 @@ import { supabase } from "../../services/supabase";
 WebBrowser.maybeCompleteAuthSession();
 
 export default function ProfileScreen() {
-  const { isPremium } = usePremium();
   const [user, setUser] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const router = useRouter();
@@ -87,13 +84,30 @@ export default function ProfileScreen() {
   const logout = async () => { setUser(null); setAvatarUrl(null); supabase.auth.signOut(); };
 
   const deleteAccount = async () => {
-    Alert.alert("ანგარიშის წაშლა", "ნამდვილად გსურთ წაშლა?", [
-      { text: "გაუქმება", style: "cancel" },
-      { text: "წაშლა", style: "destructive", onPress: async () => {
-          await supabase.from("profiles").delete().eq("id", user.id);
-          await supabase.auth.signOut();
-      }},
-    ]);
+    Alert.alert(
+      "ანგარიშის წაშლა",
+      "ანგარიში და ყველა მონაცემი სამუდამოდ წაიშლება. ამის გაუქმება შეუძლებელია.",
+      [
+        { text: "გაუქმება", style: "cancel" },
+        {
+          text: "წაშლა",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              // ანგარიშს სრულად (auth.users-იდანაც) edge function შლის.
+              const { error } = await supabase.functions.invoke("delete-account");
+              if (error) throw error;
+
+              await supabase.auth.signOut();
+              Alert.alert("ანგარიში წაიშალა");
+            } catch (e) {
+              console.log("Delete account error:", e);
+              Alert.alert("შეცდომა", "ანგარიშის წაშლა ვერ მოხერხდა. სცადეთ მოგვიანებით.");
+            }
+          },
+        },
+      ]
+    );
   };
 
   const handleEmailAuth = async () => {
@@ -104,9 +118,13 @@ export default function ProfileScreen() {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const { data, error } = await supabase.auth.signUp({ email, password });
+        // პროფილს `handle_new_user` ტრიგერი ქმნის — full_name მეტამონაცემებში გადადის.
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { full_name: fullName } },
+        });
         if (error) throw error;
-        if (data.user) await supabase.from("profiles").insert({ id: data.user.id, full_name: fullName, is_premium: false });
         Alert.alert("წარმატება", "ანგარიში შეიქმნა!");
       }
     } catch { Alert.alert("შეცდომა", "ავტორიზაცია ვერ მოხერხდა"); }
@@ -141,24 +159,49 @@ export default function ProfileScreen() {
   };
 
   const signInWithGoogle = async () => {
-    const redirectUrl = Linking.createURL("login-callback");
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
-    });
-    if (data?.url) {
+    try {
+      setLoading(true);
+      const redirectUrl = Linking.createURL("login-callback");
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: redirectUrl, skipBrowserRedirect: true },
+      });
+
+      if (error) throw error;
+      if (!data?.url) throw new Error("No OAuth url");
+
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-      if (result.type === "success") {
-        console.log("URL from Google:", result.url);
-        const url = result.url;
-        const queryString = url.includes("#") ? url.split("#")[1] : url.split("?")[1];
-        const params = queryString.split("&").reduce((acc: any, current) => {
-          const [key, value] = current.split("=");
-          acc[key] = value;
-          return acc;
-        }, {});
-        if (params.access_token) supabase.auth.setSession({ access_token: params.access_token, refresh_token: params.refresh_token });
+      if (result.type !== "success") return;
+
+      const url = result.url;
+      const queryString = url.includes("#")
+        ? url.split("#")[1]
+        : url.split("?")[1];
+
+      if (!queryString) throw new Error("No tokens in redirect url");
+
+      const params: Record<string, string> = {};
+      for (const pair of queryString.split("&")) {
+        const [key, value] = pair.split("=");
+        if (key) params[key] = decodeURIComponent(value ?? "");
       }
+
+      if (!params.access_token || !params.refresh_token) {
+        throw new Error("Missing tokens");
+      }
+
+      const { error: sessionError } = await supabase.auth.setSession({
+        access_token: params.access_token,
+        refresh_token: params.refresh_token,
+      });
+
+      if (sessionError) throw sessionError;
+    } catch (e) {
+      console.log("Google sign in error:", e);
+      Alert.alert("შეცდომა", "Google-ით ავტორიზაცია ვერ მოხერხდა");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -186,10 +229,10 @@ export default function ProfileScreen() {
                   <Ionicons name="camera" size={16} color="#000" />
                 </View>
               </View>
-              <Text style={styles.userName}>{fullName || user.email.split('@')[0]}</Text>
+              <Text style={styles.userName}>{fullName || user.email?.split('@')[0]}</Text>
               <View style={styles.statusBadge}>
-                <Ionicons name={isPremium ? "shield-checkmark" : "person-outline"} size={14} color="#D4AF37" />
-                <Text style={styles.statusText}>{isPremium ? "PRIME წევრი" : "უფასო ვერსია"}</Text>
+                <Ionicons name="person-outline" size={14} color="#D4AF37" />
+                <Text style={styles.statusText}>მომხმარებელი</Text>
               </View>
             </TouchableOpacity>
 
@@ -198,15 +241,6 @@ export default function ProfileScreen() {
             <View style={styles.menu}>
               <MenuButton icon="person-outline" label="პირადი მონაცემები" onPress={() => router.push("/profile-details")} />
               <MenuButton icon="settings-outline" label="პარამეტრები" onPress={() => router.push("/settings")} />
-              
-              {!isPremium && (
-                <TouchableOpacity style={styles.premiumPromotion} onPress={() => router.push("/subscription")}>
-                  <LinearGradient colors={["#D4AF37", "#AA8E56"]} style={styles.premiumGradient}>
-                    <Ionicons name="star" size={20} color="#000" />
-                    <Text style={styles.premiumText}>გაააქტიურე PRIME</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
 
               <MenuButton icon="document-text-outline" label="Privacy Policy" onPress={() => Linking.openURL("https://sites.google.com/view/georgiahistory-privacy")} />
               
@@ -255,16 +289,16 @@ export default function ProfileScreen() {
                 <View style={styles.line} />
               </View>
 
-              {/* Apple Button - მხოლოდ iOS-ზე გამოჩნდება, თუ გინდა, თუმცა Apple ითხოვს, რომ Apple-ით შესვლა პირველი იყოს */}
-              {Platform.OS === 'ios' && (
-                <TouchableOpacity style={styles.appleBtn} onPress={signInWithApple}>
+              {/* Apple-ით შესვლა მხოლოდ iOS-ზე (App Store-ის მოთხოვნა) */}
+              {Platform.OS === "ios" && (
+                <TouchableOpacity style={styles.appleBtn} onPress={signInWithApple} disabled={loading}>
                   <Ionicons name="logo-apple" size={20} color="#FFF" />
                   <Text style={styles.appleBtnText}>Apple-ით შესვლა</Text>
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity style={styles.googleBtn} onPress={signInWithGoogle}>
-                <Image source={{ uri: "https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" }} style={styles.googleIcon} />
+              <TouchableOpacity style={styles.googleBtn} onPress={signInWithGoogle} disabled={loading}>
+                <Ionicons name="logo-google" size={20} color="#DB4437" style={styles.googleIcon} />
                 <Text style={styles.googleBtnText}>Google-ით შესვლა</Text>
               </TouchableOpacity>
 
@@ -313,9 +347,6 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingVertical: 15 },
   menuLeft: { flexDirection: "row", alignItems: "center" },
   menuLabel: { color: "#E5E7EB", fontSize: 16, marginLeft: 15, fontWeight: "500" },
-  premiumPromotion: { marginTop: 10, marginBottom: 10 },
-  premiumGradient: { flexDirection: "row", alignItems: "center", justifyContent: "center", padding: 15, borderRadius: 16 },
-  premiumText: { color: "#000", fontWeight: "900", marginLeft: 10, fontSize: 15 },
   footerActions: { marginTop: 30, alignItems: "center" },
   logoutBtn: { flexDirection: "row", alignItems: "center", backgroundColor: "rgba(255,255,255,0.05)", paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12, width: "100%", justifyContent: "center" },
   logoutText: { color: "#E5E7EB", fontWeight: "700", marginLeft: 10 },
@@ -340,7 +371,7 @@ const styles = StyleSheet.create({
   appleBtnText: { color: "#FFF", fontWeight: "700", fontSize: 15, marginLeft: 10 },
 
   googleBtn: { flexDirection: "row", backgroundColor: "#FFF", height: 55, borderRadius: 14, justifyContent: "center", alignItems: "center" },
-  googleIcon: { width: 20, height: 20, marginRight: 12 },
+  googleIcon: { marginRight: 12 },
   googleBtnText: { color: "#000", fontWeight: "700", fontSize: 15 },
   toggleBtn: { marginTop: 25, alignItems: "center" },
   toggleText: { color: "#9CA3AF", fontSize: 14 },

@@ -38,6 +38,7 @@ const DustParticle = ({ delay }: { delay: number }) => {
         Animated.timing(opacityAnim, { toValue: 0, duration: 2000, useNativeDriver: true }),
       ])
     ).start();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const randomX = Math.random() * width;
@@ -110,6 +111,7 @@ export default function SplashIntro() {
     return () => {
       soundRef.current?.unloadAsync();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const playSound = async () => {
@@ -117,7 +119,7 @@ export default function SplashIntro() {
       const { sound } = await Audio.Sound.createAsync(require("../assets/sounds/intro.wav"));
       soundRef.current = sound;
       await sound.playAsync();
-    } catch (e) {}
+    } catch {}
   };
 
   const waitForSession = async () => {
@@ -154,7 +156,7 @@ export default function SplashIntro() {
 
       <View style={styles.content}>
         <Animated.View style={{ opacity: textReveal }}>
-          <Text style={styles.subTitle}>საქართველოს მატიანე</Text>
+          <Text style={styles.subTitle}>მსოფლიოს მატიანე</Text>
           <View style={styles.mainTitleContainer}>
             <Text style={styles.titleLine}>ყოველდღიური</Text>
             <Text style={[styles.titleLine, styles.goldText]}>ისტორია</Text>
