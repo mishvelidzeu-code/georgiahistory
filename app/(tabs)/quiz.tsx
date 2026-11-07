@@ -29,6 +29,7 @@ export default function QuizScreen() {
     const [loading, setLoading] = useState(true);
     const [options, setOptions] = useState<string[]>([]);
     const [timeLeft, setTimeLeft] = useState("");
+    const [myRank, setMyRank] = useState<any>(null);
 
     // --- ლოგიკა (უცვლელი) ---
     useEffect(() => {
@@ -91,6 +92,10 @@ export default function QuizScreen() {
         try {
             const { data, error } = await supabase.rpc("leaderboard");
             if (!error) setLeaderboard(data || []);
+
+            // საკუთარი ადგილი რეიტინგში (მხოლოდ ავტორიზებულისთვის)
+            const { data: mine } = await supabase.rpc("my_quiz_rank");
+            setMyRank(Array.isArray(mine) ? mine[0] ?? null : mine ?? null);
         } catch (e) { console.log(e); }
     }
 
@@ -168,18 +173,45 @@ export default function QuizScreen() {
         <View style={styles.leaderboardSection}>
             <View style={styles.sectionHeader}>
                 <Ionicons name="trophy-outline" size={20} color="#D4AF37" />
-                <Text style={styles.sectionTitle}>დღის ლიდერები</Text>
+                <Text style={styles.sectionTitle}>საერთო რეიტინგი</Text>
             </View>
+
+            <Text style={styles.leaderboardHint}>
+                ქულები ყოველდღე ჯამდება — გამოტოვებული დღე 0 ქულაა.
+            </Text>
+
+            {leaderboard.length === 0 && (
+                <Text style={styles.leaderboardEmpty}>
+                    რეიტინგი ჯერ ცარიელია — იყავი პირველი!
+                </Text>
+            )}
+
             {leaderboard.map((player, index) => {
                 const medals = ["🥇", "🥈", "🥉"];
                 return (
                     <View key={index} style={styles.leaderboardRow}>
                         <Text style={styles.medal}>{medals[index] || `${index + 1}.`}</Text>
-                        <Text style={styles.username}>{player.username}</Text>
+                        <View style={{ flex: 1 }}>
+                            <Text style={styles.username}>{player.username}</Text>
+                            {!!player.days_played && (
+                                <Text style={styles.userDays}>{player.days_played} დღე</Text>
+                            )}
+                        </View>
                         <Text style={styles.userScore}>{player.total_score} ქულა</Text>
                     </View>
                 );
             })}
+
+            {!!myRank && (
+                <View style={[styles.leaderboardRow, styles.myRankRow]}>
+                    <Text style={styles.medal}>{myRank.rank}.</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={styles.username}>შენ</Text>
+                        <Text style={styles.userDays}>{myRank.days_played} დღე</Text>
+                    </View>
+                    <Text style={styles.userScore}>{myRank.total_score} ქულა</Text>
+                </View>
+            )}
         </View>
     );
 
@@ -361,7 +393,11 @@ const styles = StyleSheet.create({
         borderColor: "rgba(255,255,255,0.03)"
     },
     medal: { fontSize: 16, width: 30 },
-    username: { flex: 1, color: "#E2D9C5", fontWeight: "600", fontSize: 15 },
+    username: { color: "#E2D9C5", fontWeight: "600", fontSize: 15 },
+    userDays: { color: "#6B7280", fontSize: 12, marginTop: 2 },
+    myRankRow: { borderWidth: 1, borderColor: "rgba(212,175,55,0.45)" },
+    leaderboardHint: { color: "#9CA3AF", fontSize: 12, marginBottom: 14, lineHeight: 18 },
+    leaderboardEmpty: { color: "#6B7280", fontSize: 14, fontStyle: "italic", marginBottom: 10 },
     userScore: { color: "#D4AF37", fontWeight: "800" },
     divider: { height: 1, backgroundColor: "rgba(212,175,55,0.1)", marginVertical: 10 }
 });
