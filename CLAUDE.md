@@ -6,50 +6,55 @@ Guidance for Claude Code when working in this repository.
 
 **დღის ისტორია** (`georgia-history-app`) — a Georgian-language "this day in history" mobile app.
 Expo SDK 54 / React Native 0.81 / expo-router v6 (file-based routing, typed routes on),
-Supabase backend (auth + Postgres + storage). Targets iOS + Android only; there is no web target.
-The app is **free** — the former PRIME/RevenueCat paywall was removed on 2026-11-07.
+Supabase backend (auth + Postgres + storage). iOS + Android only; there is no web target.
+The app is **free** — the PRIME/RevenueCat paywall was removed on 2026-11-07.
 
 - Expo owner/slug: `mishvela` / `georgia-history-app`, EAS project `10febd73-7545-4658-9a01-a2680d34f272`
 - Bundle id / package: `com.mishvela.georgiahistoryapp`
 - Git remote: `https://github.com/mishvelidzeu-code/georgiahistory.git` (branch `main`)
-- Supabase project: `cnfpgzhdqjntvakisgvn` ("ყოველდღიური ისოტრია", region ap-southeast-1).
-  The previous project `lgygwpvectxaxdiujjna` was deleted. Schema, RLS and both edge functions are
-  deployed; only the Google/Apple auth providers and the function secrets are still unset.
+- Supabase project: `cnfpgzhdqjntvakisgvn` ("ყოველდღიური ისოტრია", ap-southeast-1).
+  The earlier project `lgygwpvectxaxdiujjna` was deleted; schema, RLS, content and all three
+  edge functions are deployed to the new one.
 
 ## Commands
 
 ```bash
-npm start                 # expo start (dev server)
-npm run android           # expo run:android
-npm run ios               # expo run:ios
+npm start                 # expo start
+npm run android / ios     # local native run
 npm run lint              # expo lint — currently clean
 npx tsc --noEmit          # type check — currently clean
 npx expo export --platform ios --output-dir <dir>   # bundle smoke test
-npx supabase link --project-ref <new-ref>
-npx supabase db push      # apply supabase/migrations
-npx supabase functions deploy delete-account
+node scripts/import-content.js                       # content → Supabase (needs .env.local)
+npx eas-cli build --platform ios --profile production --auto-submit
+npx eas-cli update --branch production --message "…"  # OTA, works from build 11 onward
 ```
 
 No tests, no CI (`.github/` is empty).
 
+## Secrets
+
+`.env.local` (gitignored) holds `SUPABASE_SERVICE_ROLE_KEY`, used only by
+`scripts/import-content.js`. Never commit it, never print the key, never pass it through chat.
+`.gitignore` blocks `.env`, `.env.*` and `.env*.local`. The Google service-account JSON in the
+repo root is also gitignored and has never been committed — it belongs to the removed RevenueCat
+integration and should be revoked in Google Cloud.
+
 ## Architecture
 
 ### Routing (`app/`)
-- `app/_layout.tsx` — root `Stack`; wraps `AuthProvider → HistoryProvider → ThemeProvider(DarkTheme)`
-  and sets up `expo-notifications`. Only `(tabs)` is declared; every other route is auto-registered
-  by expo-router, so never declare a `<Stack.Screen>` for a file that doesn't exist.
-- `app/index.tsx` → `app/SplashIntro.tsx` (animated intro + `assets/sounds/intro.wav`, then
-  `router.replace("/(tabs)")`).
+- `app/_layout.tsx` — root `Stack`; wraps `AuthProvider → HistoryProvider → ThemeProvider(DarkTheme)`,
+  mounts `NotificationBootstrap`, sets the notification handler. Only `(tabs)` is declared; every
+  other route is auto-registered, so never declare a `<Stack.Screen>` for a file that doesn't exist.
+- `app/index.tsx` → `app/SplashIntro.tsx` → `router.replace("/(tabs)")`.
 - `app/(tabs)/` — 5 tabs: `index` (ისტორია), `explore` (გვარები), `science` (მეცნიერება),
-  `quiz` (ქვიზი), `profile` (პროფილი). The tab bar adds `useSafeAreaInsets().bottom` to its height
-  and padding — without that it sits under the Android navigation bar.
+  `quiz` (ქვიზი), `profile` (პროფილი). The tab bar adds `useSafeAreaInsets().bottom` to height
+  and padding — without it the icons sit under the Android navigation bar.
 - `app/premium/` — `births.tsx`, `world-events.tsx`, `medicina.tsx`. The folder name is historical;
-  **these screens are free now**, they are just gated by login.
-- Other routes: `settings.tsx`, `profile-details.tsx`, `login-callback.tsx` (OAuth return, renders
-  `null`), `modal.tsx` (unused Expo template leftover).
+  these screens are free, only login-gated.
+- Other routes: `settings.tsx`, `profile-details.tsx`, `login-callback.tsx`, `modal.tsx` (unused).
 
 ### Login gate
-Daily-history content is only shown to signed-in users. The pattern is:
+Daily-history content is shown only to signed-in users:
 
 ```tsx
 const { user, authLoading } = useAuth();
@@ -58,67 +63,81 @@ if (!user) return <AuthGate title=… message=… icon=… />;   // components/a
 ```
 
 `AuthGate` sends the user to `/(tabs)/profile`, where the login/signup form lives.
-Gated: home, science, world-events, medicina, births. Open: quiz, გვარები (explore), profile.
+Gated: home, science, world-events, medicina, births. Open: quiz, გვარები, profile.
 
-### State (`context/`)
-- `AuthContext` — Supabase session/user + `onAuthStateChange`; exposes `user`, `session`, `authLoading`.
-- `HistoryContext` — reads `daily_history` for today's Georgia date, caches in AsyncStorage under
-  `daily_history_cache` as `{ key, data }` and only reuses the cache when `key` is still today.
+### Notifications
+`services/notifications.ts` is the single place for the Android channel (`daily-history`),
+permission, the 10:00 daily reminder and the push token.
+`components/notification-bootstrap.tsx` asks for permission **once, after login** (never on the
+splash), then schedules the reminder, stores the token and routes notification taps via
+`data.screen`. Never call `cancelAllScheduledNotificationsAsync()` from a screen — that bug wiped
+the daily reminder on every app open.
 
-### Dates
-`services/date.ts` is the single source for Georgia time (UTC+4):
-`getGeorgiaNow`, `getGeorgiaMonthDay`, `getGeorgiaDayKey` (`"MM-DD"`), `getGeorgiaDayStartIso`,
-`getGeorgianMonthName`, `getGeorgianDateLabel`. Never recompute UTC+4 inline in a screen.
+### State & dates
+- `AuthContext` — session/user + `authLoading`.
+- `HistoryContext` — reads `daily_history` for today's Georgia key, caches `{ key, data }` in
+  AsyncStorage and only reuses the cache when `key` is still today.
+- `services/date.ts` is the only source for Georgia time (UTC+4): `getGeorgiaNow`,
+  `getGeorgiaMonthDay`, `getGeorgiaDayKey` (`"MM-DD"`), `getGeorgiaDayStartIso`,
+  `getGeorgianMonthName`, `getGeorgianDateLabel`. Never recompute UTC+4 inline.
 
 ### Backend
-- `services/supabase.ts` — single client; URL/key constants with `EXPO_PUBLIC_SUPABASE_URL` /
-  `EXPO_PUBLIC_SUPABASE_ANON_KEY` env override.
-- Schema lives in `supabase/migrations/20261107090000_full_schema.sql` and is authoritative:
-  `profiles`, `daily_history` (key `MM-DD`), `science_events`, `medicine_events`, `surnames`,
-  `quiz_questions`, `quiz_scores`, the `leaderboard()` RPC (returns `username`, `total_score`),
-  the `avatars` storage bucket, RLS on everything, and a `handle_new_user` trigger that creates a
-  profile row for every new auth user (including Google/Apple sign-ups).
-- Edge functions: `weekly-history-update` (cron, Wikipedia + OpenAI → `daily_history`, writes
-  `date` as `MM-DD`, protected by `x-cron-secret`) and `delete-account` (service-role, deletes the
-  avatar, the profile and the `auth.users` row — required by App Store 5.1.1(v)).
+- `services/supabase.ts` — one client; URL + publishable key as constants with
+  `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` overrides.
+- Schema: `supabase/migrations/20261107090000_full_schema.sql` — `profiles`, `daily_history`
+  (text key `MM-DD`), `science_events`, `medicine_events`, `surnames`, `quiz_questions`,
+  `quiz_scores`, the `leaderboard()` RPC (`username`, `total_score`), the `avatars` bucket, RLS
+  everywhere, and a `handle_new_user` trigger that creates a profile for every new auth user.
+- Edge functions: `weekly-history-update` (cron, Wikipedia + OpenAI → `daily_history`; currently
+  **unused** — content is maintained by hand), `delete-account` (service-role, full account
+  deletion for App Store 5.1.1(v)), `send-daily-push` (cron secret, Expo Push API, cleans up
+  `DeviceNotRegistered` tokens).
+
+### Content
+`content/` holds the source of truth, mirrored into the database by `scripts/import-content.js`
+(upsert, safe to re-run):
+- `daily_history.json` — 366 days, built from Georgian Wikipedia day pages.
+- `science_events.json` — 366 days; March came from a hand-written CSV, 74 days were written from
+  English Wikipedia, the rest from the Georgian pages.
+- `medicine_events.json` — **not built yet**, the next content task.
+`content-templates/` holds CSV templates for filling tables by hand.
+Facts come from sources and are never invented; if a day has no event, leave it empty rather than
+making one up — the screens all have empty states.
 
 ### Conventions
-- Georgian UI strings inline; no i18n layer.
-- Dark theme only. Palette: gold `#D4AF37`, backgrounds `#0A0D14` / `#111827`, text `#D1D5DB` / `#9CA3AF`.
-- One screen per file, `StyleSheet.create` at the bottom of the same file.
+- Georgian UI strings inline; no i18n layer. Dark theme only.
+- Palette: gold `#D4AF37`, backgrounds `#0A0D14` / `#111827`, text `#D1D5DB` / `#9CA3AF`.
+- One screen per file, `StyleSheet.create` at the bottom.
 - Path alias `@/*` → repo root.
-- A list of cards carries its own `route` field — never a parallel array of routes (that caused an
-  off-by-one bug on the home screen).
+- A list of cards carries its own `route` field — never a parallel array of routes.
 
 ## Gotchas
 
-- **Uncommitted work tree.** `main` equals `origin/main` (`490b50f`); everything since then,
-  including all of the 2026-11-07 work, is uncommitted and unpushed.
-- **Supabase is wired but not finished.** Still to do in the Dashboard: enable the Google and
-  Apple auth providers (only `email` is on), set the `OPENAI_API_KEY` and `CRON_SECRET` function
-  secrets, add `georgiahistoryapp://login-callback` to the redirect URLs, and schedule the
-  `weekly-history-update` cron. Email confirmation is ON, so `signUp` returns no session until the
-  user clicks the link — the profile screen branches on `data.session` for that.
-- **All content tables are empty.** `daily_history` fills from the cron function; `science_events`,
-  `medicine_events`, `quiz_questions` need rows; `surnames` comes from giftgrb.ge later.
-- The project region is ap-southeast-1 (Singapore), which is far from Georgian users. Region cannot
-  be changed after creation — moving to eu-central-1 means a new project plus re-running the
-  migration.
-- **Stale native prebuild.** `android/` exists locally (gitignored) at `versionCode 1` /
-  `versionName "1.0.0"` while `app.json` says `1.0.1` / `2`. `app.json` changes (icon, permissions,
-  `usesAppleSignIn`) only reach a local build after `npx expo prebuild --clean`.
-- `react-native-purchases` is still in `package.json` although nothing imports it any more —
-  `npm uninstall react-native-purchases` + a fresh prebuild when convenient.
+- **Supabase is wired but unfinished.** Google and Apple auth providers are still off (only
+  `email`), the `OPENAI_API_KEY` / `CRON_SECRET` function secrets are unset, no cron is scheduled,
+  and `georgiahistoryapp://login-callback` still needs to be in the redirect URLs.
+- `quiz_questions` and `surnames` are empty. 447 surname rows with the right columns already exist
+  in the user's **other** Supabase project (the giftgrb.ge one) and can be copied over.
+- **OTA only works from build 11 (2026-11-07) onward** — `eas.json` had no `channel` before that,
+  so older builds can never receive an update. Native changes (permissions, icons, entitlements,
+  new native packages) always need a new build.
+- `submit.production` in `eas.json` has no `ascAppId`, so `--auto-submit` fails in non-interactive
+  mode; the build itself still runs.
+- Project region is ap-southeast-1 (Singapore), far from Georgian users; the region cannot be
+  changed after creation.
+- Email confirmation is ON, so `signUp` returns no session until the link is clicked — the profile
+  screen branches on `data.session`.
 - `expo-av` is deprecated on SDK 54 (replace with `expo-audio` before SDK 55); used only for the
   splash sound.
-- `georgia-history-app-33d0ce4eea4a.json` (Google service account) sits in the repo root; it is
-  gitignored and has never been committed — keep it that way. `google-services.json` **is** committed.
-- `supabase/.temp/` still points at the deleted project until the CLI is re-linked.
+- Local `android/` is gitignored and stale (`versionCode 1`); `app.json` changes only reach a local
+  build after `npx expo prebuild --clean`. EAS builds prebuild in the cloud and are unaffected.
 
 ## Working rules
 
 - Don't commit secrets, the service-account JSON, or the `android/` / `ios` folders.
 - Keep Georgian UI copy in Georgian; match the existing palette and card/gradient style.
 - Any schema change goes into `supabase/migrations/`, never only into the hosted project.
+- Content changes go into `content/*.json` first, then into the database via the import script —
+  so the repo always holds a restorable backup.
 - Before handing work back: `npx tsc --noEmit`, `npm run lint`, and an
   `npx expo export --platform ios` bundle check. All three are currently clean.
