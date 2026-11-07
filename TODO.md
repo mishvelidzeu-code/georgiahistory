@@ -41,25 +41,27 @@ Supabase პროექტი: **`cnfpgzhdqjntvakisgvn`** („ყოველ�
 
 ორივე ფუნქცია უკვე deploy-ზეა, მხოლოდ გასაღებები აკლია.
 
-- [ ] **B1. Secrets ჩასვი**
-  `Edge Functions → Secrets` (ან `Project Settings → Edge Functions`):
-  - `OPENAI_API_KEY` — შენი OpenAI-ის გასაღები
-  - `CRON_SECRET` — თვითონ მოიგონე გრძელი შემთხვევითი სტრიქონი (მაგ. 32 სიმბოლო)
+**გადაწყვეტილება (2026-11-07):** OpenAI-ს რობოტი ჯერ არ გვჭირდება — კონტენტს ხელით ავსებ.
+`weekly-history-update` ფუნქცია ადგილზე რჩება, უბრალოდ გამორთული (გასაღების გარეშე არ მუშაობს).
 
-- [ ] **B2. ერთხელ ხელით გაუშვი `weekly-history-update`**
-  `Edge Functions → weekly-history-update → Invoke`, ჰედერით `x-cron-secret: <CRON_SECRET>`.
-  ეს აავსებს `daily_history`-ს მომდევნო 7 დღისთვის — ამის მერე მთავარ ეკრანზე ტექსტი გამოჩნდება.
+- [ ] **B1. `CRON_SECRET`** — მხოლოდ მაშინ, როცა სერვერულ push-ს ჩართავ (იხ. E ნაწილი).
+  `Edge Functions → Secrets` → გრძელი შემთხვევითი სტრიქონი.
 
-- [ ] **B3. Cron დააყენე**
-  `Integrations → Cron` → ახალი job, კვირაში ერთხელ (მაგ. ორშაბათი 04:00), ეძახება
-  `weekly-history-update`-ს იმავე `x-cron-secret` ჰედერით.
+- [ ] ~~`OPENAI_API_KEY`~~ — გადადებულია (ხელით შევსების გამო)
+- [ ] ~~`weekly-history-update`-ის გაშვება და cron~~ — გადადებულია
 
 ## C. კონტენტი (ცხრილები ჯერ ცარიელია)
 
-- [ ] **C1. `science_events`** — თითო ჩანაწერი დღეზე: `month`, `day`, `year`, `title`, `description`
+📁 **მზა შაბლონები:** `content-templates/` — ოთხი CSV, თარიღები უკვე ჩაწერილი.
+ინსტრუქცია: [content-templates/README.md](content-templates/README.md)
+
+- [ ] **C0. `daily_history` — ტექსტები მზადაა, მხოლოდ ჩაწერა დარჩა** ✨
+      366 დღე აწყობილია ქართული ვიკიპედიიდან → `content/daily_history.json`
+      ჩასაწერად (PowerShell, გასაღები მხოლოდ შენს ტერმინალში რჩება):
+      `$env:SUPABASE_SERVICE_ROLE_KEY="<key>"; node scripts/import-content.js`
+- [ ] **C1. `science_events`** — თითო ჩანაწერი დღეზე: `year`, `title`, `description`
 - [ ] **C2. `medicine_events`** — იგივე სტრუქტურა
-- [ ] **C3. `quiz_questions`** — `month`, `day`, `question`, `option1..option4`, `correct`
-      (`correct`-ში ზუსტად იგივე ტექსტი უნდა იყოს, რაც სწორ ვარიანტშია; `category` სურვილისამებრ)
+- [ ] **C3. `quiz_questions`** — დღეში 4 კითხვა; `correct`-ში ზუსტად იგივე ტექსტი, რაც სწორ ვარიანტშია
 - [ ] **C4. `surnames` — მითხარი და მე გადმოვიტან.**
       შენს მეორე Supabase პროექტში (`mishvelidzeu-code's Project` — giftgrb.ge-ს ბაზა)
       `surnames` ცხრილში **447 ჩანაწერია** და ზუსტად საჭირო სვეტებიც აქვს:
