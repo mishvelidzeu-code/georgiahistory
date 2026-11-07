@@ -55,12 +55,13 @@ Supabase პროექტი: **`cnfpgzhdqjntvakisgvn`** („ყოველ�
 📁 **მზა შაბლონები:** `content-templates/` — ოთხი CSV, თარიღები უკვე ჩაწერილი.
 ინსტრუქცია: [content-templates/README.md](content-templates/README.md)
 
-- [ ] **C0. `daily_history` — ტექსტები მზადაა, მხოლოდ ჩაწერა დარჩა** ✨
+- [x] ~~**C0. `daily_history`**~~ — 366 დღე ჩაწერილია ✅
       366 დღე აწყობილია ქართული ვიკიპედიიდან → `content/daily_history.json`
       ჩასაწერად (PowerShell, გასაღები მხოლოდ შენს ტერმინალში რჩება):
       `$env:SUPABASE_SERVICE_ROLE_KEY="<key>"; node scripts/import-content.js`
-- [ ] **C1. `science_events`** — თითო ჩანაწერი დღეზე: `year`, `title`, `description`
-- [ ] **C2. `medicine_events`** — იგივე სტრუქტურა
+- [x] ~~**C1. `science_events`**~~ — 366 დღე ჩაწერილია (მარტი შენი CSV-დან, დანარჩენი ვიკიპედიიდან)
+- [ ] **C2. `medicine_events`** — 366 დღე, იგივე მეთოდით (წყარო + ხელით შევსება ხარვეზებზე).
+      **შემდეგი სამუშაო Claude-ისთვის** — `.env.local` უკვე ადგილზეა, ჩაწერაც ავტომატურად მოხდება.
 - [ ] **C3. `quiz_questions`** — დღეში 4 კითხვა; `correct`-ში ზუსტად იგივე ტექსტი, რაც სწორ ვარიანტშია
 - [ ] **C4. `surnames` — მითხარი და მე გადმოვიტან.**
       შენს მეორე Supabase პროექტში (`mishvelidzeu-code's Project` — giftgrb.ge-ს ბაზა)

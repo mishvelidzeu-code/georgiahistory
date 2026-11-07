@@ -20,13 +20,33 @@ const SUPABASE_URL =
   process.env.EXPO_PUBLIC_SUPABASE_URL ||
   "https://cnfpgzhdqjntvakisgvn.supabase.co";
 
-const KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+/** გასაღები: ან garemos ცვლადიდან, ან .env.local-იდან (git-ში არ ხვდება). */
+function readKey() {
+  if (process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    return process.env.SUPABASE_SERVICE_ROLE_KEY.trim();
+  }
+
+  const envFile = path.join(__dirname, "..", ".env.local");
+  if (!fs.existsSync(envFile)) return null;
+
+  for (const line of fs.readFileSync(envFile, "utf8").split(/\r?\n/)) {
+    const m = line.match(/^\s*SUPABASE_SERVICE_ROLE_KEY\s*=\s*(.+?)\s*$/);
+    if (m) return m[1].replace(/^["']|["']$/g, "").trim();
+  }
+  return null;
+}
+
+const KEY = readKey();
 
 if (!KEY) {
   console.error(
-    "\n❌ SUPABASE_SERVICE_ROLE_KEY არ არის მითითებული.\n\n" +
-      'PowerShell:  $env:SUPABASE_SERVICE_ROLE_KEY="..."; node scripts/import-content.js\n' +
-      'Git Bash:    SUPABASE_SERVICE_ROLE_KEY="..." node scripts/import-content.js\n'
+    "\n❌ SUPABASE_SERVICE_ROLE_KEY ვერ მოიძებნა.\n\n" +
+      "ვარიანტი 1 — ფაილი (ერთხელ):\n" +
+      "  შექმენი .env.local პროექტის ფესვში და ჩაწერე ერთი ხაზი:\n" +
+      "  SUPABASE_SERVICE_ROLE_KEY=sb_secret_...\n" +
+      "  (.gitignore-ში უკვე გამორიცხულია — git-ში არ მოხვდება)\n\n" +
+      "ვარიანტი 2 — ტერმინალის ცვლადი:\n" +
+      '  $env:SUPABASE_SERVICE_ROLE_KEY="..."; node scripts/import-content.js\n'
   );
   process.exit(1);
 }
@@ -66,28 +86,62 @@ async function upsert(table, rows, conflict) {
   process.stdout.write(`\r${table}: ${sent}/${rows.length} ✓\n`);
 }
 
-(async () => {
-  const file = path.join(__dirname, "..", "content", "daily_history.json");
+function load(name) {
+  const file = path.join(__dirname, "..", "content", name);
+  if (!fs.existsSync(file)) return null;
+  return JSON.parse(fs.readFileSync(file, "utf8"));
+}
 
-  if (!fs.existsSync(file)) {
-    console.error(`❌ ფაილი ვერ მოიძებნა: ${file}`);
-    process.exit(1);
+(async () => {
+  // --- daily_history ---
+  const daily = load("daily_history.json");
+  if (daily) {
+    const rows = daily
+      .map(({ date, georgia_content, world_content, births_content }) => ({
+        date,
+        georgia_content,
+        world_content,
+        births_content,
+      }))
+      .filter((r) => r.georgia_content || r.world_content || r.births_content);
+
+    console.log(`\ndaily_history: ${rows.length} დღე`);
+    await upsert("daily_history", rows, "date");
   }
 
-  const data = JSON.parse(fs.readFileSync(file, "utf8"));
+  // --- science_events ---
+  const science = load("science_events.json");
+  if (science) {
+    const rows = science
+      .map(({ month, day, year, title, description }) => ({
+        month,
+        day,
+        year,
+        title,
+        description,
+      }))
+      .filter((r) => r.title && r.description);
 
-  const rows = data
-    .map(({ date, georgia_content, world_content, births_content }) => ({
-      date,
-      georgia_content,
-      world_content,
-      births_content,
-    }))
-    .filter((r) => r.georgia_content || r.world_content || r.births_content);
+    console.log(`science_events: ${rows.length} დღე`);
+    await upsert("science_events", rows, "month,day");
+  }
 
-  console.log(`\nდღეები ფაილში: ${data.length}, ჩასაწერი: ${rows.length}\n`);
+  // --- medicine_events (თუ ფაილი გაჩნდა) ---
+  const medicine = load("medicine_events.json");
+  if (medicine) {
+    const rows = medicine
+      .map(({ month, day, year, title, description }) => ({
+        month,
+        day,
+        year,
+        title,
+        description,
+      }))
+      .filter((r) => r.title && r.description);
 
-  await upsert("daily_history", rows, "date");
+    console.log(`medicine_events: ${rows.length} დღე`);
+    await upsert("medicine_events", rows, "month,day");
+  }
 
   console.log("\n✅ მზადაა. შეამოწმე Table Editor-ში.\n");
 })();
