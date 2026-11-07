@@ -156,7 +156,7 @@ export default function ExploreScreen() {
         {/* Search Bar */}
         <View style={styles.searchWrapper}>
           <TextInput
-            placeholder="მაგ: ბერიძე..."
+            placeholder="მაგ: მიშველიძე..."
             placeholderTextColor="#6B7280"
             value={query}
             onChangeText={setQuery}
