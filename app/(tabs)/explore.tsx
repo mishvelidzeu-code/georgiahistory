@@ -1,3 +1,5 @@
+import AuthGate from "@/components/auth-gate";
+import { useAuth } from "@/context/AuthContext";
 import { Ionicons } from "@expo/vector-icons"; // ექსპოზე მოყვება ავტომატურად
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
 import { useEffect, useState } from "react";
@@ -24,6 +26,7 @@ const IMAGE_MAP: any = {
 };
 
 export default function ExploreScreen() {
+  const { user, authLoading } = useAuth();
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -105,8 +108,27 @@ export default function ExploreScreen() {
   };
 
   useEffect(() => {
-    fetchDailySurname();
-  }, []);
+    if (user) fetchDailySurname();
+  }, [user]);
+
+  if (authLoading) {
+    return (
+      <View style={[styles.container, { justifyContent: "center", alignItems: "center" }]}>
+        <ActivityIndicator size="large" color="#D4AF37" />
+      </View>
+    );
+  }
+
+  // შესვლის გარეშე გვარების მატიანე არ იხსნება
+  if (!user) {
+    return (
+      <AuthGate
+        title="გვარების მატიანე ჩაკეტილია"
+        message="საგვარეულო ისტორიების მოსაძებნად გაიარე ავტორიზაცია — უფასოა."
+        icon="library-outline"
+      />
+    );
+  }
 
   return (
     <KeyboardAvoidingView

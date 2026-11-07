@@ -63,7 +63,8 @@ if (!user) return <AuthGate title=… message=… icon=… />;   // components/a
 ```
 
 `AuthGate` sends the user to `/(tabs)/profile`, where the login/signup form lives.
-Gated: home, science, world-events, medicina, births, quiz. Open: გვარები, profile.
+Gated: every content screen — home, science, world-events, medicina, births, quiz and
+გვარები (explore). Only the profile tab (which holds the login form) is open.
 
 ### Notifications
 `services/notifications.ts` is the single place for the Android channel (`daily-history`),
