@@ -1,3 +1,5 @@
+import AuthGate from "@/components/auth-gate";
+import { useAuth } from "@/context/AuthContext";
 import { getGeorgiaDayStartIso, getGeorgiaMonthDay } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -16,6 +18,7 @@ import { supabase } from "../../services/supabase";
 
 export default function QuizScreen() {
     const router = useRouter();
+    const { user, authLoading } = useAuth();
 
     const [questions, setQuestions] = useState<any[]>([]);
     const [leaderboard, setLeaderboard] = useState<any[]>([]);
@@ -31,13 +34,22 @@ export default function QuizScreen() {
     const [timeLeft, setTimeLeft] = useState("");
     const [myRank, setMyRank] = useState<any>(null);
 
-    // --- ლოგიკა (უცვლელი) ---
+    // --- ლოგიკა ---
     useEffect(() => {
-        init();
         const stop = startCountdown();
         return stop;
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // კითხვებს მხოლოდ შესული მომხმარებლისთვის ვტვირთავთ
+    useEffect(() => {
+        if (authLoading) return;
+        if (user) {
+            init();
+        } else {
+            setLoading(false);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [authLoading, user]);
 
     useEffect(() => {
         if (questions.length > 0) {
@@ -159,12 +171,23 @@ export default function QuizScreen() {
 
     // --- ვიზუალური ნაწილი ---
 
-    if (loading) {
+    if (authLoading || (user && loading)) {
         return (
             <View style={styles.centerLoader}>
                 <ActivityIndicator size="large" color="#D4AF37" />
                 <Text style={styles.loaderText}>მატიანე იშლება...</Text>
             </View>
+        );
+    }
+
+    // შესვლის გარეშე ქვიზი არ იხსნება
+    if (!user) {
+        return (
+            <AuthGate
+                title="ქვიზი ჩაკეტილია"
+                message="დღის ქვიზში მონაწილეობისა და რეიტინგში მოხვედრისთვის გაიარე ავტორიზაცია."
+                icon="help-circle-outline"
+            />
         );
     }
 
