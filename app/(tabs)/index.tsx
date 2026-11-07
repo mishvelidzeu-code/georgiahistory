@@ -30,10 +30,10 @@ const GALLERY_ITEMS = [
     icon: null,
   },
   {
-    image: require("../../assets/gallery/9.webp"),
-    title: "მედიცინის მატიანე",
-    subtitle: "მეცნიერული მიღწევები ამ დღეს",
-    route: "/premium/medicina",
+    image: require("../../assets/gallery/science.webp"),
+    title: "მეცნიერული არქივი",
+    subtitle: "აღმოჩენები და გამოგონებები",
+    route: "/premium/science",
     icon: null,
   },
   {
@@ -44,11 +44,11 @@ const GALLERY_ITEMS = [
     icon: null,
   },
   {
-    image: require("../../assets/gallery/science.webp"),
+    image: require("../../assets/gallery/9.webp"),
+    title: "მედიცინის მატიანე",
+    subtitle: "სამედიცინო აღმოჩენები ამ დღეს",
+    route: "/premium/medicina",
     icon: null,
-    title: "მეცნიერული არქივი",
-    subtitle: "აღმოჩენები და გამოგონებები",
-    route: "/premium/science",
   },
 ] as const;
 
