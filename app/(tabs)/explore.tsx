@@ -147,6 +147,17 @@ export default function ExploreScreen() {
       >
         <View style={styles.headerSection}>
           <Ionicons name="library-outline" size={32} color="#D4AF37" style={{ alignSelf: "center" }} />
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={styles.siteBadge}
+            onPress={() => Linking.openURL("https://www.gvarigen.ge/")}
+          >
+            <Ionicons name="globe-outline" size={14} color="#D4AF37" />
+            <Text style={styles.siteBadgeText}>gvarigen.ge</Text>
+            <Ionicons name="open-outline" size={13} color="rgba(212,175,55,0.7)" />
+          </TouchableOpacity>
+
           <Text style={styles.title}>გვარების მატიანე</Text>
           <Text style={styles.subtitle}>
             აღმოაჩინე შენი წინაპრების ნაკვალევი და საგვარეულო ისტორია
@@ -240,6 +251,25 @@ const styles = StyleSheet.create({
   centered: { justifyContent: "center" },
   
   headerSection: { marginBottom: 30, marginTop: 20 },
+  siteBadge: {
+    alignSelf: "center",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 7,
+    marginTop: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.35)",
+    backgroundColor: "rgba(212,175,55,0.08)",
+  },
+  siteBadgeText: {
+    color: "#D4AF37",
+    fontSize: 13,
+    fontWeight: "700",
+    letterSpacing: 0.5,
+  },
   title: {
     fontSize: 28,
     color: "#E2D9C5",
