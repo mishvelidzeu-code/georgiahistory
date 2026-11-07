@@ -1,4 +1,5 @@
 import AuthGate from "@/components/auth-gate";
+import { getGeorgianDateLabel } from "@/services/date";
 import { useAuth } from "@/context/AuthContext";
 import { useHistory } from "@/context/HistoryContext";
 import { Ionicons } from "@expo/vector-icons";
@@ -77,6 +78,7 @@ export default function WorldEventsScreen() {
           <View style={styles.heroTitleContainer}>
             <Ionicons name="earth" size={24} color="#D4AF37" />
             <Text style={styles.heroLabel}>გლობალური ისტორია</Text>
+            <Text style={styles.heroDate}>{getGeorgianDateLabel()}</Text>
           </View>
         </View>
 
@@ -151,6 +153,13 @@ const styles = StyleSheet.create({
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
+  },
+  heroDate: {
+    color: "#E2D9C5",
+    fontSize: 20,
+    fontWeight: "900",
+    marginTop: 6,
+    letterSpacing: 0.5,
   },
   heroTitleContainer: {
     alignItems: 'center',

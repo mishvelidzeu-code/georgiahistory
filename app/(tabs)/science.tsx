@@ -1,6 +1,6 @@
 import AuthGate from "@/components/auth-gate";
 import { useAuth } from "@/context/AuthContext";
-import { getGeorgianMonthName, getGeorgiaMonthDay } from "@/services/date";
+import { getGeorgianDateLabel, getGeorgianMonthName, getGeorgiaMonthDay } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useCallback, useEffect, useState } from "react";
@@ -85,6 +85,7 @@ export default function ScienceScreen() {
         <View style={styles.header}>
           <Ionicons name="flask-outline" size={32} color="#D4AF37" />
           <Text style={styles.headerLabel}>მეცნიერული არქივი</Text>
+          <Text style={styles.heroDate}>{getGeorgianDateLabel()}</Text>
         </View>
 
         <View style={styles.card}>
@@ -148,6 +149,13 @@ const styles = StyleSheet.create({
     backgroundColor: "#0A0D14",
     justifyContent: "center",
     alignItems: "center",
+  },
+  heroDate: {
+    color: "#E2D9C5",
+    fontSize: 20,
+    fontWeight: "900",
+    marginTop: 6,
+    letterSpacing: 0.5,
   },
   header: {
     alignItems: "center",

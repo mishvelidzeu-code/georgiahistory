@@ -1,6 +1,6 @@
 import AuthGate from "@/components/auth-gate";
 import { useAuth } from "@/context/AuthContext";
-import { getGeorgiaMonthDay } from "@/services/date";
+import { getGeorgiaMonthDay, getGeorgianDateLabel } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
 import { useRouter } from "expo-router";
@@ -112,6 +112,7 @@ export default function MedicineScreen() {
           <View style={styles.heroTitleContainer}>
             <Ionicons name="medical" size={24} color="#D4AF37" />
             <Text style={styles.heroLabel}>მედიცინის ისტორია</Text>
+            <Text style={styles.heroDate}>{getGeorgianDateLabel()}</Text>
           </View>
         </View>
 
@@ -195,6 +196,13 @@ const styles = StyleSheet.create({
   },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
+  },
+  heroDate: {
+    color: "#E2D9C5",
+    fontSize: 20,
+    fontWeight: "900",
+    marginTop: 6,
+    letterSpacing: 0.5,
   },
   heroTitleContainer: {
     alignItems: 'center',
