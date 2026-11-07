@@ -181,34 +181,53 @@ export default function ProfileScreen() {
       if (!data?.url) throw new Error("No OAuth url");
 
       const result = await WebBrowser.openAuthSessionAsync(data.url, redirectUrl);
-      if (result.type !== "success") return;
 
-      const url = result.url;
-      const queryString = url.includes("#")
-        ? url.split("#")[1]
-        : url.split("?")[1];
+      // მომხმარებელმა თვითონ დახურა — შეცდომა არ არის
+      if (result.type === "cancel" || result.type === "dismiss") return;
 
-      if (!queryString) throw new Error("No tokens in redirect url");
+      if (result.type !== "success" || !result.url) {
+        throw new Error("ბრაუზერი აპში არ დაბრუნდა");
+      }
 
+      // პასუხი შეიძლება მოვიდეს ან #-ის შემდეგ (implicit), ან ?-ის შემდეგ (PKCE)
       const params: Record<string, string> = {};
-      for (const pair of queryString.split("&")) {
-        const [key, value] = pair.split("=");
-        if (key) params[key] = decodeURIComponent(value ?? "");
+      for (const part of [
+        result.url.split("#")[1],
+        result.url.split("?")[1]?.split("#")[0],
+      ]) {
+        if (!part) continue;
+        for (const pair of part.split("&")) {
+          const [key, value] = pair.split("=");
+          if (key) params[key] = decodeURIComponent((value ?? "").replace(/\+/g, " "));
+        }
       }
 
-      if (!params.access_token || !params.refresh_token) {
-        throw new Error("Missing tokens");
+      if (params.error || params.error_description) {
+        throw new Error(params.error_description || params.error);
       }
 
-      const { error: sessionError } = await supabase.auth.setSession({
-        access_token: params.access_token,
-        refresh_token: params.refresh_token,
-      });
-
-      if (sessionError) throw sessionError;
-    } catch (e) {
+      if (params.access_token && params.refresh_token) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: params.access_token,
+          refresh_token: params.refresh_token,
+        });
+        if (sessionError) throw sessionError;
+      } else if (params.code) {
+        const { error: codeError } = await supabase.auth.exchangeCodeForSession(
+          params.code
+        );
+        if (codeError) throw codeError;
+      } else {
+        throw new Error(
+          "ავტორიზაციის პასუხში ტოკენი არ იყო. შეამოწმე Supabase-ში Redirect URL."
+        );
+      }
+    } catch (e: any) {
       console.log("Google sign in error:", e);
-      Alert.alert("შეცდომა", "Google-ით ავტორიზაცია ვერ მოხერხდა");
+      Alert.alert(
+        "Google-ით შესვლა ვერ მოხერხდა",
+        e?.message ? String(e.message) : "უცნობი შეცდომა"
+      );
     } finally {
       setLoading(false);
     }
