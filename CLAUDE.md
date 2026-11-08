@@ -90,10 +90,16 @@ the daily reminder on every app open.
 ### Backend
 - `services/supabase.ts` — one client; URL + publishable key as constants with
   `EXPO_PUBLIC_SUPABASE_URL` / `EXPO_PUBLIC_SUPABASE_ANON_KEY` overrides.
-- Schema: `supabase/migrations/20261107090000_full_schema.sql` — `profiles`, `daily_history`
-  (text key `MM-DD`), `science_events`, `medicine_events`, `surnames`, `quiz_questions`,
-  `quiz_scores`, the `leaderboard()` RPC (`username`, `total_score`), the `avatars` bucket, RLS
-  everywhere, and a `handle_new_user` trigger that creates a profile for every new auth user.
+- Schema lives in `supabase/migrations/` — three files, all applied to the project:
+  - `20261107090000_full_schema.sql` — `profiles`, `daily_history` (text key `MM-DD`),
+    `science_events`, `medicine_events`, `surnames`, `quiz_questions`, `quiz_scores`, the
+    `avatars` bucket, RLS everywhere, and a `handle_new_user` trigger that creates a profile for
+    every new auth user.
+  - `20261107140000_quiz_rating.sql` — `quiz_questions.sort_order` + its unique index, the
+    cumulative `leaderboard()` (`username`, `total_score`, `days_played`) and `my_quiz_rank()`
+    (authenticated only).
+  - `20261107150000_holidays.sql` — the `holidays` table (`month`, `day`, `title`, `description`,
+    `is_dayoff`), read by the calendar tab.
 - Edge functions: `weekly-history-update` (cron, Wikipedia + OpenAI → `daily_history`; currently
   **unused** — content is maintained by hand), `delete-account` (service-role, full account
   deletion for App Store 5.1.1(v)), `send-daily-push` (cron secret, Expo Push API, cleans up
