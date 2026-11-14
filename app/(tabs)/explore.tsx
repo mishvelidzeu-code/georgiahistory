@@ -20,11 +20,30 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { getGeorgiaNow } from "../../services/date";
 import { supabase } from "../../services/supabase";
 
 const IMAGE_MAP: any = {
   "7.webp": require("../../assets/gallery/7.webp"),
 };
+
+/**
+ * gvarigen.ge — სრული საგვარეულო ისტორიის, გერბისა და წიგნის ადგილი.
+ * აპი მხოლოდ ნაწყვეტს აჩვენებს და აქ გადაამისამართებს.
+ * დომენი 308-ით giftgrb.ge-ზე გადადის, მაგრამ აპში gvarigen.ge-ს ვიყენებთ.
+ */
+const SITE = "https://www.gvarigen.ge";
+const UTM = "utm_source=app&utm_medium=surname_card&utm_campaign=dghis_istoria";
+
+/** კონკრეტული გვარის გვერდი. კოდის გარეშე — გვარების სრული სია. */
+const surnamePageUrl = (crestCode?: string | null) =>
+  crestCode ? `${SITE}/gvari/${crestCode}?${UTM}` : `${SITE}/gvarebi?${UTM}`;
+
+const GERBI_URL = `${SITE}/gerbi-gverdi?${UTM}`;
+
+/** მოკვლევის შეკვეთა — აკრეფილი გვარი ფორმაში გადადის. */
+const orderResearchUrl = (surname: string) =>
+  `${SITE}/gvari?surname=${encodeURIComponent(surname.trim())}&${UTM}`;
 
 export default function ExploreScreen() {
   const { user, authLoading } = useAuth();
@@ -72,8 +91,15 @@ export default function ExploreScreen() {
     setRefreshing(false);
   };
 
+  /**
+   * ბაზაში ახლა `preview` ზის (ისტორიის პირველი ~42 სიტყვა).
+   * `full_history` ძველი ჩანაწერების გამო რჩება fallback-ად.
+   */
+  const historyText = (row: any): string => row?.preview || row?.full_history || "";
+
   const getPreviewText = (text: string) => {
     const words = text.split(" ");
+    if (words.length <= 15) return words.join(" ");
     return words.slice(0, 15).join(" ") + "...";
   };
 
@@ -83,16 +109,30 @@ export default function ExploreScreen() {
     return words.slice(0, 40).join(" ") + "...";
   };
 
+  /**
+   * დღის გვარი: წლის დღე (საქართველოს დროით) მთელ ბაზაზე ბრუნავს.
+   * ადრე `new Date().getDate()` იყო — ტელეფონის დრო, და `range(day-1, day-1)`
+   * მხოლოდ პირველ 31 ჩანაწერს წვდებოდა, დანარჩენი 378 გვარი არასდროს ჩანდა.
+   */
   const fetchDailySurname = async () => {
     try {
-      const today = new Date();
-      const day = today.getDate();
+      const { count, error: countError } = await supabase
+        .from("surnames")
+        .select("surname", { count: "exact", head: true });
+      if (countError || !count) return;
+
+      const georgia = getGeorgiaNow();
+      const dayOfYear = Math.round(
+        (Date.UTC(georgia.getFullYear(), georgia.getMonth(), georgia.getDate()) -
+          Date.UTC(georgia.getFullYear(), 0, 1)) /
+          86400000
+      );
+
       const { data, error } = await supabase
         .from("surnames")
         .select("*")
-        .order("id")
-        .limit(1)
-        .range(day - 1, day - 1);
+        .order("surname")
+        .range(dayOfYear % count, dayOfYear % count);
       if (!error && data && data.length > 0) {
         setDailySurname(data[0]);
       }
@@ -103,7 +143,9 @@ export default function ExploreScreen() {
 
   const shareSurname = async () => {
     if (!dailySurname) return;
-    const message = `${dailySurname.surname}\n\n${getDailyText(dailySurname.full_history)}\n\nიხილე მეტი აპში`;
+    const message =
+      `${dailySurname.surname}\n\n${getDailyText(historyText(dailySurname))}\n\n` +
+      `სრული ისტორია: ${surnamePageUrl(dailySurname.crest_code)}`;
     try {
       await Share.share({ message });
     } catch (e) {
@@ -198,13 +240,20 @@ export default function ExploreScreen() {
               <Image source={IMAGE_MAP[result.image]} style={styles.resultImage} />
             )}
             <Text style={styles.resultSurname}>{result.surname}</Text>
-            <Text style={styles.resultHistory}>{getPreviewText(result.full_history)}</Text>
-            
-            <TouchableOpacity 
-              style={styles.goldButton} 
-              onPress={() => Linking.openURL("https://www.giftgrb.ge/#registry")}
+            <Text style={styles.resultHistory}>{getPreviewText(historyText(result))}</Text>
+
+            <TouchableOpacity
+              style={styles.goldButton}
+              onPress={() => Linking.openURL(surnamePageUrl(result.crest_code))}
             >
-              <Text style={styles.goldButtonText}>საგვარეულო კოდი</Text>
+              <Text style={styles.goldButtonText}>ნახე საიტზე</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.secondaryButton}
+              onPress={() => Linking.openURL(GERBI_URL)}
+            >
+              <Text style={styles.secondaryButtonText}>შეუკვეთე გერბი / წიგნი</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -216,7 +265,7 @@ export default function ExploreScreen() {
             <Text style={styles.notFoundText}>გვარი ბაზაში ჯერ არ მოიძებნა</Text>
             <TouchableOpacity 
               style={styles.outlineButton} 
-              onPress={() => Linking.openURL("https://www.giftgrb.ge/gvari.html")}
+              onPress={() => Linking.openURL(orderResearchUrl(query))}
             >
               <Text style={styles.outlineButtonText}>მოითხოვე მოკვლევა</Text>
             </TouchableOpacity>
@@ -234,8 +283,15 @@ export default function ExploreScreen() {
 
             <View style={styles.dailyCard}>
               <Text style={styles.dailySurnameText}>{dailySurname.surname}</Text>
-              <Text style={styles.dailyHistoryText}>{getDailyText(dailySurname.full_history)}</Text>
+              <Text style={styles.dailyHistoryText}>{getDailyText(historyText(dailySurname))}</Text>
               
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => Linking.openURL(surnamePageUrl(dailySurname.crest_code))}
+              >
+                <Text style={styles.secondaryButtonText}>ნახე საიტზე</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity style={styles.shareButton} onPress={shareSurname}>
                 <Ionicons name="share-social" size={18} color="#000" style={{ marginRight: 8 }} />
                 <Text style={styles.shareText}>გაუზიარე გვარისშვილებს</Text>
@@ -359,6 +415,18 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
   },
   goldButtonText: { color: "#000", fontWeight: "800", fontSize: 14, textTransform: "uppercase" },
+
+  // მეორეული ქმედება — გერბი/წიგნი და საიტზე გასვლა დღის ბარათიდან
+  secondaryButton: {
+    marginTop: 12,
+    padding: 15,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.45)",
+    backgroundColor: "rgba(212,175,55,0.08)",
+    alignItems: "center",
+  },
+  secondaryButtonText: { color: "#D4AF37", fontWeight: "700", fontSize: 14 },
 
   notFoundBox: { marginTop: 40, alignItems: "center", backgroundColor: "rgba(17,24,39,0.5)", padding: 30, borderRadius: 20 },
   notFoundText: { color: "#E5E7EB", fontSize: 16, marginTop: 10, marginBottom: 20, fontWeight: "600" },
