@@ -27,6 +27,7 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const [user, setUser] = useState<any>(null);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -56,6 +57,7 @@ export default function ProfileScreen() {
         } else {
           setUser(null);
           setAvatarUrl(null);
+          setIsAdmin(false);
         }
       }, 100);
     });
@@ -66,7 +68,8 @@ export default function ProfileScreen() {
   const checkUser = async (currentUser: any) => {
     if (!currentUser) return;
     setUser(currentUser);
-    const { data: profile } = await supabase.from("profiles").select("avatar_url").eq("id", currentUser.id).single();
+    const { data: profile } = await supabase.from("profiles").select("avatar_url, role").eq("id", currentUser.id).single();
+    setIsAdmin(profile?.role === "admin");
     if (profile?.avatar_url) {
       const { data: publicData } = supabase.storage.from("avatars").getPublicUrl(profile.avatar_url);
       setAvatarUrl(publicData.publicUrl + `?t=${Date.now()}`);
@@ -286,6 +289,13 @@ export default function ProfileScreen() {
             <View style={styles.divider} />
 
             <View style={styles.menu}>
+              {isAdmin && (
+                <MenuButton
+                  icon="shield-checkmark-outline"
+                  label="ადმინ პანელი"
+                  onPress={() => router.push("/admin" as any)}
+                />
+              )}
               <MenuButton icon="person-outline" label="პირადი მონაცემები" onPress={() => router.push("/profile-details")} />
               <MenuButton icon="settings-outline" label="პარამეტრები" onPress={() => router.push("/settings")} />
 
