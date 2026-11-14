@@ -198,9 +198,31 @@ making one up — the screens all have empty states.
   row, so it counts as 0.
 - **OTA works from build 11 (2026-11-07) onward** — `eas.json` had no `channel` before that, so
   older builds can never receive an update. `runtimeVersion` follows `appVersion`, so an update
-  only reaches builds of the **same** version: today that is **1.2.0 (build 13)**, submitted to
-  App Store Connect. Bumping `app.json`'s version starts a new OTA lane. Native changes
+  only reaches builds of the **same** version: today that is **1.2.0**. Bumping `app.json`'s
+  version starts a new OTA lane. Native changes
   (permissions, icons, entitlements, new native packages) always need a new build.
+- **App Store state (2026-11-14):** the live version is **1.1**; **1.2.0 (build 14)** is
+  *Waiting for Review*, set to release automatically to all users once approved. Build numbers are
+  managed by EAS (`appVersionSource: "remote"` + `autoIncrement`), so `app.json`'s `buildNumber`
+  and `versionCode` are ignored — never bump them by hand.
+- **The store listing locale is English (U.K.)**, and App Store Connect **rejects Georgian script
+  in "What's New"** ("This field contains one or more invalid characters"). Release notes and the
+  description are therefore in English. A Georgian localisation would need its own name,
+  description, keywords and screenshots.
+- **App Review needs a working demo account**, because every content screen is login-gated. It
+  lives in the version's App Review Information and must exist in the *current* Supabase project
+  (`cnfpgzhdqjntvakisgvn`). The account inherited from the deleted project was gone and would have
+  caused a Guideline 2.1 rejection, so check it with
+  `select email from auth.users where email = '…'` before every submission. Never put the password
+  in this repo.
+- When the paywall was removed, the **review notes and the store description still advertised
+  PRIME** — they asked the reviewer to test a subscription that no longer exists. Both were
+  rewritten on 2026-11-14. Removing a feature means checking the App Store metadata too.
+- Apple's **age-rating questionnaire was re-issued** (7 steps) and blocks submission until the new
+  questions are answered. The answers keep the app at **4+**; advertising is declared **No** (there
+  is no ad SDK anywhere in the project). One answer worth re-checking: *Contests* is **None**,
+  although the quiz has a cumulative leaderboard where users compete for ranking — there are no
+  prizes or rewards.
 - Apple rejects a build whose version is not higher than the last approved one (errors 90186 /
   90062) — that is why the version jumped from 1.0.1 to 1.2.0.
 - `eas.json` carries `submit.production.ios.ascAppId = 6760388933`, so `--auto-submit` works
