@@ -301,39 +301,39 @@ export default function CalendarScreen() {
                 <Text style={styles.dayoffText}>დასვენების დღე</Text>
               </View>
             )}
-          </View>
-        )}
 
-        {/* სრული ისტორია — ცალკე ფანჯარა */}
-        {!!selected?.history && (
-          <View style={styles.historyCard}>
-            <TouchableOpacity
-              activeOpacity={0.8}
-              onPress={() => setHistoryOpen((v) => !v)}
-              style={styles.historyHead}
-            >
-              <Ionicons name="book-outline" size={18} color="#D4AF37" />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.historyTitle}>სრული ისტორია</Text>
-                <Text style={styles.historyHint}>
-                  {historyOpen ? "დახურვა" : "ვინ იყო, საიდან მოდის და როგორ აღინიშნება"}
-                </Text>
-              </View>
-              <Ionicons
-                name={historyOpen ? "chevron-up" : "chevron-down"}
-                size={20}
-                color="#D4AF37"
-              />
-            </TouchableOpacity>
+            {/* სრული ისტორია — იმავე ბარათში, დასვენების დღის ქვემოთ */}
+            {!!selected.history && (
+              <>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setHistoryOpen((v) => !v)}
+                  style={styles.historyToggle}
+                >
+                  <Ionicons name="book-outline" size={18} color="#D4AF37" />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.historyTitle}>სრული ისტორია</Text>
+                    <Text style={styles.historyHint}>
+                      {historyOpen ? "დახურვა" : "ვინ იყო, საიდან მოდის და როგორ აღინიშნება"}
+                    </Text>
+                  </View>
+                  <Ionicons
+                    name={historyOpen ? "chevron-up" : "chevron-down"}
+                    size={20}
+                    color="#D4AF37"
+                  />
+                </TouchableOpacity>
 
-            {historyOpen && (
-              <View style={styles.historyBody}>
-                {selected.history.split("\n\n").map((para, i) => (
-                  <Text key={i} style={styles.historyText}>
-                    {para}
-                  </Text>
-                ))}
-              </View>
+                {historyOpen && (
+                  <View style={styles.historyBody}>
+                    {selected.history.split("\n\n").map((para, i) => (
+                      <Text key={i} style={styles.historyText}>
+                        {para}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+              </>
             )}
           </View>
         )}
@@ -493,20 +493,14 @@ const styles = StyleSheet.create({
   },
   dayoffText: { color: "#0A0D14", fontSize: 11, fontWeight: "900" },
 
-  historyCard: {
-    marginTop: 12,
-    backgroundColor: "#111827",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.18)",
-    overflow: "hidden",
-  },
-  historyHead: {
+  historyToggle: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    marginTop: 18,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: "rgba(212,175,55,0.18)",
   },
   historyTitle: {
     color: "#E2D9C5",
@@ -515,14 +509,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   historyHint: { color: "#6B7280", fontSize: 12, marginTop: 2 },
-  historyBody: {
-    paddingHorizontal: 18,
-    paddingBottom: 20,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(212,175,55,0.12)",
-    paddingTop: 16,
-    gap: 14,
-  },
+  historyBody: { marginTop: 16, gap: 14 },
   historyText: { color: "#D1D5DB", fontSize: 15, lineHeight: 26 },
 
   listHeader: {
