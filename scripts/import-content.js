@@ -147,11 +147,12 @@ function load(name) {
   const holidays = load("holidays.json");
   if (holidays) {
     const rows = holidays
-      .map(({ month, day, title, description, is_dayoff }) => ({
+      .map(({ month, day, title, description, history, is_dayoff }) => ({
         month,
         day,
         title,
         description,
+        history: history || null,
         is_dayoff,
       }))
       .filter((r) => r.title && r.description);
