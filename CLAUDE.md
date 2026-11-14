@@ -51,7 +51,7 @@ integration and should be revoked in Google Cloud.
   and padding — without it the icons sit under the Android navigation bar.
 - `app/premium/` — `births.tsx`, `world-events.tsx`, `medicina.tsx`, `science.tsx`. The folder name
   is historical; these screens are free, only login-gated, and each is opened from a card in the
-  home gallery (order: world → science → births → medicine). Each hero is a photo from
+  home gallery (order: world → science → medicine → births). Each hero is a photo from
   `assets/gallery/` with a dark gradient, the section label and today's date.
 - `calendar.tsx` shows the month grid with holidays from the `holidays` table. Every holiday of the
   shown month is rendered as a full card right under the grid — date, title, short description,

@@ -87,7 +87,8 @@ export default function BirthsScreen() {
           <View style={[styles.corner, { top: 20, right: 20, borderTopWidth: 1, borderRightWidth: 1 }]} />
 
           <Text style={styles.title}>
-            ვინ დაიბადნენ და გარდაიცვალნენ ამ დღეს
+            ვინ <Text style={styles.titleAccent}>დაიბადნენ</Text> და{" "}
+            <Text style={styles.titleAccent}>გარდაიცვალნენ</Text> ამ დღეს
           </Text>
 
           <View style={styles.decorativeDivider}>
@@ -96,9 +97,24 @@ export default function BirthsScreen() {
             <View style={styles.line} />
           </View>
 
-          <Text style={styles.text}>
-            {content || "ამ დღის მონაცემები ჯერ არ არის ატვირთული."}
-          </Text>
+          {content ? (
+            content.split("\n\n").map((para: string, i: number) => {
+              const line = para.trim();
+              // „დაიბადნენ:" / „გარდაიცვალნენ:" — მოკლე სტრიქონი ორწინწილით
+              const isHeading = line.endsWith(":") && line.length <= 40;
+
+              return (
+                <Text
+                  key={i}
+                  style={[styles.text, isHeading ? styles.sectionHeading : styles.paragraph]}
+                >
+                  {line}
+                </Text>
+              );
+            })
+          ) : (
+            <Text style={styles.text}>ამ დღის მონაცემები ჯერ არ არის ატვირთული.</Text>
+          )}
 
           {/* Bottom Badge */}
           <View style={styles.footerMotif}>
@@ -225,11 +241,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#D4AF37',
     marginHorizontal: 10,
   },
+  titleAccent: {
+    color: "#D4AF37",
+    fontWeight: "900",
+  },
   text: {
     fontSize: 17,
     color: "#D1D5DB",
     lineHeight: 30,
     textAlign: "left",
+  },
+  paragraph: { marginBottom: 14 },
+  sectionHeading: {
+    color: "#D4AF37",
+    fontSize: 19,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+    marginTop: 10,
+    marginBottom: 12,
   },
 
   // Footer

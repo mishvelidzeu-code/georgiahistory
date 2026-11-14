@@ -37,17 +37,17 @@ const GALLERY_ITEMS = [
     icon: null,
   },
   {
-    image: require("../../assets/gallery/1.webp"),
-    title: "პიროვნებები",
-    subtitle: "ვინ დაიბადნენ და გარდაიცვალნენ",
-    route: "/premium/births",
-    icon: null,
-  },
-  {
     image: require("../../assets/gallery/9.webp"),
     title: "მედიცინის მატიანე",
     subtitle: "სამედიცინო აღმოჩენები ამ დღეს",
     route: "/premium/medicina",
+    icon: null,
+  },
+  {
+    image: require("../../assets/gallery/1.webp"),
+    title: "პიროვნებები",
+    subtitle: "ვინ დაიბადნენ და გარდაიცვალნენ",
+    route: "/premium/births",
     icon: null,
   },
 ] as const;
