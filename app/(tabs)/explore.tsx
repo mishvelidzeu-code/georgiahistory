@@ -3,7 +3,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useFonts } from "expo-font";
 import { Ionicons } from "@expo/vector-icons"; // ექსპოზე მოყვება ავტომატურად
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
-import { useEffect, useState } from "react";
+import * as Sharing from "expo-sharing";
+import { useEffect, useRef, useState } from "react";
+import { captureRef } from "react-native-view-shot";
 import {
   ActivityIndicator,
   Image,
@@ -20,7 +22,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { getGeorgiaNow } from "../../services/date";
+import { getGeorgiaNow, getGeorgianDateLabel } from "../../services/date";
 import { supabase } from "../../services/supabase";
 
 const IMAGE_MAP: any = {
@@ -41,6 +43,16 @@ const surnamePageUrl = (crestCode?: string | null) =>
 
 const GERBI_URL = `${SITE}/gerbi-gverdi?${UTM}`;
 
+/**
+ * გაზიარებული ბმული ცალკე უნდა ჩაიწეროს სტატისტიკაში — ეს აპში ღილაკზე
+ * დაჭერა არ არის, არამედ მესამე პირის კლიკია. კამპანიის კუდს ვაცილებთ,
+ * რომ მესენჯერში გრძელი ბმული არ გამოჩნდეს.
+ */
+const sharedSurnameUrl = (crestCode?: string | null) =>
+  crestCode
+    ? `${SITE}/gvari/${crestCode}?utm_source=app&utm_medium=share`
+    : `${SITE}/gvarebi?utm_source=app&utm_medium=share`;
+
 /** მოკვლევის შეკვეთა — აკრეფილი გვარი ფორმაში გადადის. */
 const orderResearchUrl = (surname: string) =>
   `${SITE}/gvari?surname=${encodeURIComponent(surname.trim())}&${UTM}`;
@@ -56,6 +68,10 @@ export default function ExploreScreen() {
   const [searched, setSearched] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [dailySurname, setDailySurname] = useState<any>(null);
+  const [sharing, setSharing] = useState(false);
+
+  // გასაზიარებელი ბარათი ეკრანს მიღმა იხატება და იქიდან გადაიღება
+  const cardRef = useRef<View>(null);
 
   // --- ლოგიკა (უცვლელი) ---
   const searchSurname = async () => {
@@ -141,15 +157,57 @@ export default function ExploreScreen() {
     }
   };
 
+  /** ბარათზე უფრო მოკლე ტექსტი ჯდება, ვიდრე ეკრანზე. */
+  const getCardText = (text: string) => {
+    const words = text.split(" ");
+    if (words.length <= 32) return words.join(" ");
+    return words.slice(0, 32).join(" ") + "...";
+  };
+
+  /**
+   * გაზიარება: ჯერ ვცდილობთ ბარათის სურათად გადაღებას (PNG), და მხოლოდ
+   * წარუმატებლობისას ვბრუნდებით უბრალო ტექსტზე. ასე გაზიარებული რამ
+   * ყოველთვის ატარებს gvarigen.ge-ს ბრენდს, თუნდაც ტექსტი დაიკარგოს.
+   */
   const shareSurname = async () => {
-    if (!dailySurname) return;
+    if (!dailySurname || sharing) return;
+
     const message =
       `${dailySurname.surname}\n\n${getDailyText(historyText(dailySurname))}\n\n` +
-      `სრული ისტორია: ${surnamePageUrl(dailySurname.crest_code)}`;
+      `სრული ისტორია: ${sharedSurnameUrl(dailySurname.crest_code)}`;
+
+    setSharing(true);
     try {
-      await Share.share({ message });
+      let uri: string | null = null;
+      try {
+        uri = await captureRef(cardRef, {
+          format: "png",
+          quality: 1,
+          result: "tmpfile",
+        });
+      } catch (captureError) {
+        console.log("Card capture failed:", captureError);
+      }
+
+      if (uri) {
+        if (Platform.OS === "ios") {
+          // iOS-ზე ერთ გაზიარებაში სურათიც ეტევა და ტექსტიც
+          await Share.share({ message, url: uri });
+        } else if (await Sharing.isAvailableAsync()) {
+          await Sharing.shareAsync(uri, {
+            mimeType: "image/png",
+            dialogTitle: "გაუზიარე გვარისშვილებს",
+          });
+        } else {
+          await Share.share({ message });
+        }
+      } else {
+        await Share.share({ message });
+      }
     } catch (e) {
       console.log("Share error:", e);
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -292,14 +350,51 @@ export default function ExploreScreen() {
                 <Text style={styles.secondaryButtonText}>ნახე საიტზე</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity style={styles.shareButton} onPress={shareSurname}>
-                <Ionicons name="share-social" size={18} color="#000" style={{ marginRight: 8 }} />
-                <Text style={styles.shareText}>გაუზიარე გვარისშვილებს</Text>
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={shareSurname}
+                disabled={sharing}
+              >
+                {sharing ? (
+                  <ActivityIndicator size="small" color="#000" style={{ marginRight: 8 }} />
+                ) : (
+                  <Ionicons name="share-social" size={18} color="#000" style={{ marginRight: 8 }} />
+                )}
+                <Text style={styles.shareText}>
+                  {sharing ? "მზადდება..." : "გაუზიარე გვარისშვილებს"}
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
         )}
       </ScrollView>
+
+      {/*
+        გასაზიარებელი ბარათი — ეკრანს მიღმა იხატება (top: -10000) და იქიდან
+        გადაიღება PNG-ად. `collapsable={false}` აუცილებელია: მის გარეშე
+        Android-ი ამ View-ს ოპტიმიზაციისას შლის და გადაღება ცარიელს აბრუნებს.
+      */}
+      {dailySurname && (
+        <View style={styles.cardStage} pointerEvents="none">
+          <View ref={cardRef} collapsable={false} style={styles.shareCard}>
+            <LinearGradient
+              colors={["rgba(212,175,55,0.18)", "transparent"]}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <Text style={styles.cardBadge}>დღის გვარი</Text>
+            <Text style={styles.cardSurname}>{dailySurname.surname}</Text>
+            <View style={styles.cardDivider} />
+            <Text style={styles.cardText}>{getCardText(historyText(dailySurname))}</Text>
+
+            <View style={styles.cardFooter}>
+              <Text style={[styles.cardBrand, fontsLoaded && styles.cardBrandCursive]}>
+                gvarigen.ge
+              </Text>
+              <Text style={styles.cardDate}>{getGeorgianDateLabel()}</Text>
+            </View>
+          </View>
+        </View>
+      )}
     </KeyboardAvoidingView>
   );
 }
@@ -427,6 +522,52 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryButtonText: { color: "#D4AF37", fontWeight: "700", fontSize: 14 },
+
+  // --- გასაზიარებელი ბარათი (ეკრანს მიღმა, PNG-ად გადასაღებად) ---
+  cardStage: { position: "absolute", top: -10000, left: 0 },
+  shareCard: {
+    width: 360,
+    backgroundColor: "#0A0D14",
+    borderWidth: 2,
+    borderColor: "rgba(212,175,55,0.5)",
+    borderRadius: 28,
+    paddingVertical: 40,
+    paddingHorizontal: 28,
+    overflow: "hidden",
+    alignItems: "center",
+  },
+  cardBadge: {
+    color: "#D4AF37",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 2,
+    textTransform: "uppercase",
+    marginBottom: 14,
+  },
+  cardSurname: {
+    color: "#D4AF37",
+    fontSize: 34,
+    fontWeight: "900",
+    letterSpacing: 2,
+    textAlign: "center",
+  },
+  cardDivider: {
+    width: 60,
+    height: 2,
+    backgroundColor: "rgba(212,175,55,0.45)",
+    marginVertical: 18,
+  },
+  cardText: { color: "#D1D5DB", fontSize: 15, lineHeight: 26, textAlign: "center" },
+  cardFooter: { marginTop: 28, alignItems: "center" },
+  // GreatVibes მხოლოდ ლათინურ „gvarigen.ge"-ზე — ქართულს მკხედრული არ აქვს
+  cardBrand: { color: "#D4AF37", fontSize: 24, fontStyle: "italic", letterSpacing: 1 },
+  cardBrandCursive: {
+    fontFamily: "GreatVibes",
+    fontSize: 38,
+    fontStyle: "normal",
+    lineHeight: 50,
+  },
+  cardDate: { color: "#9CA3AF", fontSize: 12, marginTop: 4, letterSpacing: 1 },
 
   notFoundBox: { marginTop: 40, alignItems: "center", backgroundColor: "rgba(17,24,39,0.5)", padding: 30, borderRadius: 20 },
   notFoundText: { color: "#E5E7EB", fontSize: 16, marginTop: 10, marginBottom: 20, fontWeight: "600" },
