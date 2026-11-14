@@ -44,14 +44,14 @@ const surnamePageUrl = (crestCode?: string | null) =>
 const GERBI_URL = `${SITE}/gerbi-gverdi?${UTM}`;
 
 /**
- * გაზიარებული ბმული ცალკე უნდა ჩაიწეროს სტატისტიკაში — ეს აპში ღილაკზე
- * დაჭერა არ არის, არამედ მესამე პირის კლიკია. კამპანიის კუდს ვაცილებთ,
- * რომ მესენჯერში გრძელი ბმული არ გამოჩნდეს.
+ * გაზიარებისას აპის ბმული მიდის, და არა საიტის: გაზიარებას აპიდან აკეთებს
+ * ადამიანი, რომელსაც აპი მოსწონს — მიმღების კითხვაა „სად ვიშოვო ეს?".
+ * gvarigen.ge ისედაც ბარათზეა დატანილი, ანუ ბრენდი სურათთან ერთად მიდის.
+ *
+ * Google Play-ზე აპი ჯერ არ არის, ამიტომ ორივე პლატფორმაზე App Store-ის
+ * ბმულს ვაგზავნით. Play-ზე გამოქვეყნების შემდეგ აქ Platform.select დაემატება.
  */
-const sharedSurnameUrl = (crestCode?: string | null) =>
-  crestCode
-    ? `${SITE}/gvari/${crestCode}?utm_source=app&utm_medium=share`
-    : `${SITE}/gvarebi?utm_source=app&utm_medium=share`;
+const APP_STORE_URL = "https://apps.apple.com/app/id6760388933";
 
 /** მოკვლევის შეკვეთა — აკრეფილი გვარი ფორმაში გადადის. */
 const orderResearchUrl = (surname: string) =>
@@ -172,9 +172,9 @@ export default function ExploreScreen() {
   const shareSurname = async () => {
     if (!dailySurname || sharing) return;
 
-    const message =
-      `${dailySurname.surname}\n\n${getDailyText(historyText(dailySurname))}\n\n` +
-      `სრული ისტორია: ${sharedSurnameUrl(dailySurname.crest_code)}`;
+    // ისტორია ბარათზევე წერია — ტექსტში მხოლოდ გვარი და ბმული მიდის.
+    // გვარი განზრახ რჩება: ჩატის ისტორიაში ტექსტით ძებნა მუშაობს, სურათით — არა.
+    const message = `${dailySurname.surname}\n\n${APP_STORE_URL}`;
 
     setSharing(true);
     try {
