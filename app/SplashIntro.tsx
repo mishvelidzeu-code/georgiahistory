@@ -105,7 +105,7 @@ export default function SplashIntro() {
         Animated.timing(fadeAnim, { toValue: 0, duration: 1500, useNativeDriver: true }).start(() => {
           router.replace("/(tabs)");
         });
-      }, 3000);
+      }, 1000);
     });
 
     return () => {
