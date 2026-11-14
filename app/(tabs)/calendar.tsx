@@ -3,7 +3,7 @@ import { useAuth } from "@/context/AuthContext";
 import { getGeorgiaNow, getGeorgianMonthName } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   SafeAreaView,
@@ -101,13 +101,27 @@ export default function CalendarScreen() {
   const today = getGeorgiaNow();
   const [month, setMonth] = useState(today.getMonth() + 1);
   const [year, setYear] = useState(today.getFullYear());
-  const [selected, setSelected] = useState<Holiday | null>(null);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  // რომელი დღის ისტორიაა გაშლილი — გასაღები "თვე-დღე"
+  const [openHistory, setOpenHistory] = useState<Record<string, boolean>>({});
+  const [highlighted, setHighlighted] = useState<string | null>(null);
 
-  // დღის არჩევა — ისტორიის ფანჯარა ყოველ ჯერზე დაკეტილი იწყება
-  const pickDay = useCallback((h: Holiday | null) => {
-    setSelected(h);
-    setHistoryOpen(false);
+  const scrollRef = useRef<ScrollView>(null);
+  const cardY = useRef<Record<string, number>>({});
+
+  const keyOf = (h: Holiday) => `${h.month}-${h.day}`;
+
+  /** ბადეში დღეზე დაჭერა — შესაბამის ბარათამდე ჩამოსქროლვა */
+  const jumpToCard = useCallback((h: Holiday) => {
+    const k = `${h.month}-${h.day}`;
+    setHighlighted(k);
+    const y = cardY.current[k];
+    if (y != null) {
+      scrollRef.current?.scrollTo({ y: Math.max(y - 12, 0), animated: true });
+    }
+  }, []);
+
+  const toggleHistory = useCallback((k: string) => {
+    setOpenHistory((prev) => ({ ...prev, [k]: !prev[k] }));
   }, []);
 
   const [rows, setRows] = useState<Holiday[]>([]);
@@ -168,8 +182,9 @@ export default function CalendarScreen() {
   }, [month, year]);
 
   const shiftMonth = (delta: number) => {
-    setSelected(null);
-    setHistoryOpen(false);
+    setHighlighted(null);
+    setOpenHistory({});
+    cardY.current = {};
     let m = month + delta;
     let y = year;
     if (m < 1) {
@@ -210,7 +225,11 @@ export default function CalendarScreen() {
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.header}>
           <Ionicons name="calendar-outline" size={30} color="#D4AF37" />
           <Text style={styles.headerLabel}>კალენდარი</Text>
@@ -253,7 +272,7 @@ export default function CalendarScreen() {
                     key={di}
                     activeOpacity={holiday ? 0.7 : 1}
                     disabled={!holiday}
-                    onPress={() => pickDay(holiday ?? null)}
+                    onPress={() => holiday && jumpToCard(holiday)}
                     style={styles.dayCell}
                   >
                     {d && (
@@ -261,7 +280,7 @@ export default function CalendarScreen() {
                         style={[
                           styles.dayInner,
                           isToday(d) && styles.dayToday,
-                          selected && holiday && selected.day === d && styles.daySelected,
+                          holiday && highlighted === keyOf(holiday) && styles.daySelected,
                         ]}
                       >
                         <Text
@@ -283,62 +302,7 @@ export default function CalendarScreen() {
           ))}
         </View>
 
-        {/* არჩეული დღე */}
-        {!!selected && (
-          <View style={styles.selectedCard}>
-            <LinearGradient
-              colors={["rgba(212,175,55,0.12)", "transparent"]}
-              style={StyleSheet.absoluteFill}
-            />
-            <Text style={styles.selectedDate}>
-              {selected.day} {getGeorgianMonthName(selected.month)}
-            </Text>
-            <Text style={styles.selectedTitle}>{selected.title}</Text>
-            <Text style={styles.selectedText}>{selected.description}</Text>
-            {selected.is_dayoff && (
-              <View style={styles.dayoffBadge}>
-                <Ionicons name="bed-outline" size={13} color="#0A0D14" />
-                <Text style={styles.dayoffText}>დასვენების დღე</Text>
-              </View>
-            )}
-
-            {/* სრული ისტორია — იმავე ბარათში, დასვენების დღის ქვემოთ */}
-            {!!selected.history && (
-              <>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setHistoryOpen((v) => !v)}
-                  style={styles.historyToggle}
-                >
-                  <Ionicons name="book-outline" size={18} color="#D4AF37" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.historyTitle}>სრული ისტორია</Text>
-                    <Text style={styles.historyHint}>
-                      {historyOpen ? "დახურვა" : "ვინ იყო, საიდან მოდის და როგორ აღინიშნება"}
-                    </Text>
-                  </View>
-                  <Ionicons
-                    name={historyOpen ? "chevron-up" : "chevron-down"}
-                    size={20}
-                    color="#D4AF37"
-                  />
-                </TouchableOpacity>
-
-                {historyOpen && (
-                  <View style={styles.historyBody}>
-                    {selected.history.split("\n\n").map((para, i) => (
-                      <Text key={i} style={styles.historyText}>
-                        {para}
-                      </Text>
-                    ))}
-                  </View>
-                )}
-              </>
-            )}
-          </View>
-        )}
-
-        {/* თვის დღესასწაულები */}
+        {/* თვის დღესასწაულები — ბარათები პირდაპირ ჩანს */}
         <View style={styles.listHeader}>
           <View style={styles.line} />
           <Text style={styles.listTitle}>ამ თვის დღეები</Text>
@@ -348,25 +312,77 @@ export default function CalendarScreen() {
         {monthHolidays.length === 0 ? (
           <Text style={styles.emptyText}>ამ თვეში უქმე დღეები არ არის.</Text>
         ) : (
-          monthHolidays.map((h, i) => (
-            <TouchableOpacity
-              key={i}
-              activeOpacity={0.8}
-              onPress={() => pickDay(h)}
-              style={styles.listRow}
-            >
-              <View style={styles.listDate}>
-                <Text style={styles.listDay}>{h.day}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.listName}>{h.title}</Text>
-                <Text style={styles.listKind}>
-                  {h.is_dayoff ? "დასვენების დღე" : "აღსანიშნავი დღე"}
+          monthHolidays.map((h) => {
+            const k = keyOf(h);
+            const open = !!openHistory[k];
+
+            return (
+              <View
+                key={k}
+                onLayout={(e) => {
+                  cardY.current[k] = e.nativeEvent.layout.y;
+                }}
+                style={[styles.dayCard, highlighted === k && styles.dayCardActive]}
+              >
+                <LinearGradient
+                  colors={["rgba(212,175,55,0.12)", "transparent"]}
+                  style={StyleSheet.absoluteFill}
+                />
+
+                <Text style={styles.cardDate}>
+                  {h.day} {getGeorgianMonthName(h.month)}
                 </Text>
+                <Text style={styles.cardTitle}>{h.title}</Text>
+                <Text style={styles.cardText}>{h.description}</Text>
+
+                {h.is_dayoff ? (
+                  <View style={styles.dayoffBadge}>
+                    <Ionicons name="bed-outline" size={13} color="#0A0D14" />
+                    <Text style={styles.dayoffText}>დასვენების დღე</Text>
+                  </View>
+                ) : (
+                  <View style={styles.markBadge}>
+                    <Ionicons name="flag-outline" size={13} color="#D4AF37" />
+                    <Text style={styles.markText}>აღსანიშნავი დღე</Text>
+                  </View>
+                )}
+
+                {/* სრული ისტორია — იმავე ბარათში */}
+                {!!h.history && (
+                  <>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => toggleHistory(k)}
+                      style={styles.historyToggle}
+                    >
+                      <Ionicons name="book-outline" size={18} color="#D4AF37" />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.historyTitle}>სრული ისტორია</Text>
+                        <Text style={styles.historyHint}>
+                          {open ? "დახურვა" : "ვინ იყო, საიდან მოდის და როგორ აღინიშნება"}
+                        </Text>
+                      </View>
+                      <Ionicons
+                        name={open ? "chevron-up" : "chevron-down"}
+                        size={20}
+                        color="#D4AF37"
+                      />
+                    </TouchableOpacity>
+
+                    {open && (
+                      <View style={styles.historyBody}>
+                        {h.history.split("\n\n").map((para, i) => (
+                          <Text key={i} style={styles.historyText}>
+                            {para}
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                  </>
+                )}
               </View>
-              <Ionicons name="chevron-forward" size={18} color="#4B5563" />
-            </TouchableOpacity>
-          ))
+            );
+          })
         )}
 
         <Text style={styles.note}>
@@ -456,30 +472,31 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  selectedCard: {
-    marginTop: 18,
+  dayCard: {
+    marginBottom: 14,
     backgroundColor: "#111827",
     borderRadius: 24,
     padding: 22,
     borderWidth: 1,
-    borderColor: "rgba(212,175,55,0.25)",
+    borderColor: "rgba(212,175,55,0.18)",
     overflow: "hidden",
   },
-  selectedDate: {
+  dayCardActive: { borderColor: "rgba(212,175,55,0.55)" },
+  cardDate: {
     color: "#D4AF37",
     fontSize: 12,
     fontWeight: "800",
     letterSpacing: 1.5,
     textTransform: "uppercase",
   },
-  selectedTitle: {
+  cardTitle: {
     color: "#FFFFFF",
     fontSize: 20,
     fontWeight: "900",
     marginTop: 6,
     marginBottom: 10,
   },
-  selectedText: { color: "#D1D5DB", fontSize: 15, lineHeight: 25 },
+  cardText: { color: "#D1D5DB", fontSize: 15, lineHeight: 25 },
   dayoffBadge: {
     alignSelf: "flex-start",
     flexDirection: "row",
@@ -492,6 +509,19 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   dayoffText: { color: "#0A0D14", fontSize: 11, fontWeight: "900" },
+  markBadge: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    borderWidth: 1,
+    borderColor: "rgba(212,175,55,0.4)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    marginTop: 14,
+  },
+  markText: { color: "#D4AF37", fontSize: 11, fontWeight: "800" },
 
   historyToggle: {
     flexDirection: "row",
@@ -516,32 +546,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 28,
-    marginBottom: 14,
+    marginTop: 26,
+    marginBottom: 16,
   },
   line: { width: 28, height: 1, backgroundColor: "rgba(212,175,55,0.3)", marginHorizontal: 10 },
   listTitle: { color: "#D4AF37", fontSize: 13, fontWeight: "700", letterSpacing: 1 },
-
-  listRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(17,24,39,0.6)",
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 10,
-  },
-  listDate: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: "rgba(212,175,55,0.1)",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 14,
-  },
-  listDay: { color: "#D4AF37", fontSize: 17, fontWeight: "900" },
-  listName: { color: "#E2D9C5", fontSize: 15, fontWeight: "700" },
-  listKind: { color: "#6B7280", fontSize: 12, marginTop: 2 },
 
   emptyText: {
     color: "#6B7280",

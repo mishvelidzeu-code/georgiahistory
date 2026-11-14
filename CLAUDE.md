@@ -53,12 +53,13 @@ integration and should be revoked in Google Cloud.
   is historical; these screens are free, only login-gated, and each is opened from a card in the
   home gallery (order: world → science → births → medicine). Each hero is a photo from
   `assets/gallery/` with a dark gradient, the section label and today's date.
-- `calendar.tsx` shows the month grid with holidays from the `holidays` table. Tapping a day
-  opens one card: the short description, the day-off badge, and under them a collapsible
-  „სრული ისტორია" section fed by `holidays.history`
-  (paragraphs split on `
+- `calendar.tsx` shows the month grid with holidays from the `holidays` table. Every holiday of the
+  shown month is rendered as a full card right under the grid — date, title, short description,
+  a day-off / აღსანიშნავი badge and a collapsible „სრული ისტორია" section fed by
+  `holidays.history` (paragraphs split on `
 
-`). Easter-based days
+`). Nothing is hidden behind a tap; tapping a day
+  in the grid only highlights its card and scrolls to it (`jumpToCard`). Easter-based days
   (წითელი პარასკევი, დიდი შაბათი, აღდგომა, შავი ორშაბათი) are **computed in the app**
   (`orthodoxEaster`, Meeus Julian + 13 days), not stored.
 - Other routes: `settings.tsx`, `profile-details.tsx`, `login-callback.tsx`, `modal.tsx` (unused).
