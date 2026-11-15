@@ -215,6 +215,14 @@ making one up — the screens all have empty states.
   only reaches builds of the **same** version: today that is **1.3.0**. Bumping `app.json`'s
   version starts a new OTA lane. Native changes
   (permissions, icons, entitlements, new native packages) always need a new build.
+- **An OTA for the users who have the app today must be published from `main`**, not from
+  `meta-sdk-install-campaign`. The live build is **1.2.0** and `main`'s `app.json` still says
+  1.2.0, so `npx eas-cli update --branch production --platform ios` from `main` lands on the
+  right runtime. The meta branch is 1.3.0 *and* its JS imports `react-native-fbsdk-next`, a
+  native module the 1.2.0 build does not contain — pushing that bundle to 1.2.0 would crash the
+  app on launch. So a JS fix goes to `main` first (OTA), then gets merged into the meta branch.
+  Last 1.2.0 OTA: 2026-11-15, the first-login refresh fix (update group
+  `228a7807-146f-4b76-ab7e-0510f5e3f4c2`).
 - **App Store state (2026-11-15):** **1.2.0 is Ready for Distribution**; `app.json` is now at
   **1.3.0**, the Meta-SDK build, which has **not been built or submitted yet**. Build numbers are
   managed by EAS (`appVersionSource: "remote"` + `autoIncrement`), so `app.json`'s `buildNumber`
