@@ -2,7 +2,7 @@
   "expo": {
     "name": "დღის ისტორია",
     "slug": "georgia-history-app",
-    "version": "1.2.0",
+    "version": "1.3.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "georgiahistoryapp",
@@ -58,6 +58,24 @@
         "expo-image-picker",
         {
           "photosPermission": "აპლიკაციას სჭირდება წვდომა ფოტოგალერიაზე, რათა შეძლოთ პროფილის სურათის ატვირთვა."
+        }
+      ],
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "28683384861362374",
+          "clientToken": "6f90750441cc128b80c6168b08a64055",
+          "displayName": "დღის ისტორია",
+          "scheme": "fb28683384861362374",
+          "isAutoInitEnabled": true,
+          "autoLogAppEventsEnabled": true,
+          "advertiserIDCollectionEnabled": true
+        }
+      ],
+      [
+        "expo-tracking-transparency",
+        {
+          "userTrackingPermission": "ნებართვა გვჭირდება, რომ გავზომოთ, რომელმა რეკლამამ მოგიყვანა აპამდე, და ნაკლები, სამაგიეროდ უფრო შესაბამისი რეკლამა გაჩვენოთ."
         }
       ]
     ],

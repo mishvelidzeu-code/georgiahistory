@@ -85,7 +85,21 @@ permission, the 10:00 daily reminder and the push token.
 `components/notification-bootstrap.tsx` asks for permission **once, after login** (never on the
 splash), then schedules the reminder, stores the token and routes notification taps via
 `data.screen`. Never call `cancelAllScheduledNotificationsAsync()` from a screen — that bug wiped
-the daily reminder on every app open.
+the daily reminder on every app open. The same effect then calls `setupTracking()` — the two
+system prompts run one after the other, never in parallel.
+
+### Ads / Meta SDK
+`services/tracking.ts` is the only place that touches `react-native-fbsdk-next` and App Tracking
+Transparency: it asks for ATT (iOS only, once), passes the answer to
+`Settings.setAdvertiserTrackingEnabled()` **before** `Settings.initializeSDK()`, and never blocks
+on a refusal — SKAdNetwork reporting works without IDFA.
+The SDK exists for one reason: **Meta refuses to run iOS 14+ app-install campaigns without it**
+("you need to set up Apple's SKAdNetwork"), and it also refuses an `apps.apple.com` URL in a
+Traffic campaign ("an app URL is only supported by the App Installs objective"). So there is no
+SDK-free way to advertise the app on Meta. Config lives in `app.json` under the
+`react-native-fbsdk-next` plugin: Meta app ID `28683384861362374` (Fortourist portfolio), the
+client token (public by design — it ships in `Info.plist`), and the `fb<appID>` URL scheme.
+Campaign specs live outside this repo, in `meta-ads/specs/` (see `georgia-history-ios-installs.json`).
 
 ### State & dates
 - `AuthContext` — session/user + `authLoading`.
@@ -198,13 +212,18 @@ making one up — the screens all have empty states.
   row, so it counts as 0.
 - **OTA works from build 11 (2026-11-07) onward** — `eas.json` had no `channel` before that, so
   older builds can never receive an update. `runtimeVersion` follows `appVersion`, so an update
-  only reaches builds of the **same** version: today that is **1.2.0**. Bumping `app.json`'s
+  only reaches builds of the **same** version: today that is **1.3.0**. Bumping `app.json`'s
   version starts a new OTA lane. Native changes
   (permissions, icons, entitlements, new native packages) always need a new build.
-- **App Store state (2026-11-14):** the live version is **1.1**; **1.2.0 (build 14)** is
-  *Waiting for Review*, set to release automatically to all users once approved. Build numbers are
+- **App Store state (2026-11-15):** **1.2.0 is Ready for Distribution**; `app.json` is now at
+  **1.3.0**, the Meta-SDK build, which has **not been built or submitted yet**. Build numbers are
   managed by EAS (`appVersionSource: "remote"` + `autoIncrement`), so `app.json`'s `buildNumber`
   and `versionCode` are ignored — never bump them by hand.
+- **1.3.0 cannot ship until the privacy declarations are updated** — the Meta SDK collects the
+  advertising identifier, so App Store Connect → App Privacy needs **"Data Used to Track You"**
+  (Device ID, Usage Data) and Play Console → Data safety needs **Advertising ID = Yes**. Both
+  currently say no tracking and no advertising ID; `PLAY-STORE.md` still records the old answers.
+  Submitting 1.3.0 without fixing these is an App Store 5.1.2 / Play Data-safety violation.
 - **The store listing locale is English (U.K.)**, and App Store Connect **rejects Georgian script
   in "What's New"** ("This field contains one or more invalid characters"). Release notes and the
   description are therefore in English. A Georgian localisation would need its own name,
