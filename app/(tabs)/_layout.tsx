@@ -2,10 +2,16 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
 import React from "react";
+import { useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+
+  // ხუთი ტაბი ვიწრო ეკრანზე (iPhone SE/15 — 375–393 pt) ≈ 75 pt-ს იღებს,
+  // 11 pt-ზე კი გრძელი სახელები იჭრებოდა („კალენდარ…").
+  const labelSize = width < 400 ? 9.5 : 11;
 
   // ტაბ-ბარი სისტემის ნავიგაციის ზოლს ზემოდან უნდა დაადგეს, თორემ
   // ანდროიდზე (edge-to-edge) იკონები ძალიან ჩაწეული ჩანს.
@@ -40,8 +46,15 @@ export default function TabLayout() {
           marginBottom: 2,
         },
 
+        // სისტემის გადიდებული ფონტი ვერ ჭრის სახელებს.
+        tabBarAllowFontScaling: false,
+
+        tabBarItemStyle: {
+          paddingHorizontal: 2,
+        },
+
         tabBarLabelStyle: {
-          fontSize: 11,
+          fontSize: labelSize,
           fontWeight: "600",
         },
       }}

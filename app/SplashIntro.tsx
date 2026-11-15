@@ -17,6 +17,12 @@ import { supabase } from "../services/supabase";
 const { height, width } = Dimensions.get("window");
 const FLAG = require("../assets/gallery/6.webp");
 
+// ვიწრო ეკრანები (iPhone SE/13 mini/15 — 375–393 pt): 42 pt-ზე „ყოველდღიური"
+// ბოლო ასოს ქვედა ხაზზე აგდებდა, ამიტომ ზომა და letterSpacing მცირდება.
+const NARROW = width < 400;
+const TITLE_SIZE = NARROW ? 36 : 42;
+const TITLE_SPACING = NARROW ? 1 : 2;
+
 // ნაწილაკების კომპონენტი (ატმოსფეროსთვის)
 const DustParticle = ({ delay }: { delay: number }) => {
   const moveAnim = useRef(new Animated.Value(0)).current;
@@ -156,13 +162,48 @@ export default function SplashIntro() {
 
       <View style={styles.content}>
         <Animated.View style={{ opacity: textReveal }}>
-          <Text style={styles.subTitle}>მსოფლიოს მატიანე</Text>
+          {/* ყველა წარწერა ერთ ხაზზე რჩება — სისტემის გადიდებული ფონტიც
+              ვერ გადაიტანს ასოს ქვევით (allowFontScaling=false), ხოლო
+              adjustsFontSizeToFit ვიწრო ეკრანზე ოდნავ აპატარავებს. */}
+          <Text
+            style={styles.subTitle}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            allowFontScaling={false}
+          >
+            მსოფლიოს მატიანე
+          </Text>
           <View style={styles.mainTitleContainer}>
-            <Text style={styles.titleLine}>ყოველდღიური</Text>
-            <Text style={[styles.titleLine, styles.goldText]}>ისტორია</Text>
+            <Text
+              style={styles.titleLine}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              allowFontScaling={false}
+            >
+              ყოველდღიური
+            </Text>
+            <Text
+              style={[styles.titleLine, styles.goldText]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              allowFontScaling={false}
+            >
+              ისტორია
+            </Text>
           </View>
           <View style={styles.divider} />
-          <Text style={styles.tagline}>წარსული ცოცხლდება დღეს</Text>
+          <Text
+            style={styles.tagline}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            allowFontScaling={false}
+          >
+            წარსული ცოცხლდება დღეს
+          </Text>
         </Animated.View>
       </View>
     </Animated.View>
@@ -190,12 +231,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: 30,
+    paddingHorizontal: NARROW ? 20 : 30,
+    alignSelf: "stretch",
   },
   subTitle: {
     color: "#D4AF37",
     fontSize: 14,
-    letterSpacing: 6,
+    letterSpacing: NARROW ? 4 : 6,
     textTransform: "uppercase",
     textAlign: "center",
     marginBottom: 10,
@@ -203,13 +245,17 @@ const styles = StyleSheet.create({
   },
   mainTitleContainer: {
     alignItems: "center",
+    alignSelf: "stretch",
   },
   titleLine: {
     color: "#FFF",
-    fontSize: 42,
+    fontSize: TITLE_SIZE,
+    // ქართულ ასოებს ქვედა კიდეები აქვს (ყ, ღ, უ) — ხაზის სიმაღლე ფართოდ.
+    lineHeight: Math.round(TITLE_SIZE * 1.35),
     fontWeight: "300",
-    letterSpacing: 2,
+    letterSpacing: TITLE_SPACING,
     textAlign: "center",
+    alignSelf: "stretch",
   },
   goldText: {
     color: "#D4AF37",

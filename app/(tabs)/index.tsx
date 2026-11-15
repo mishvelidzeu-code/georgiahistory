@@ -201,8 +201,24 @@ export default function HomeScreen() {
                 )}
 
                 <View style={styles.galleryTextContainer}>
-                  <Text style={styles.galleryText} numberOfLines={1}>{item.title}</Text>
-                  <Text style={styles.gallerySubText} numberOfLines={2}>{item.subtitle}</Text>
+                  {/* გვერდის სახელი ბარათზე მთლიანად უნდა ჩანდეს — ვიწრო
+                      ეკრანზე ოდნავ პატარავდება, სისტემის ფონტი კი არ ზრდის. */}
+                  <Text
+                    style={styles.galleryText}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                    minimumFontScale={0.75}
+                    allowFontScaling={false}
+                  >
+                    {item.title}
+                  </Text>
+                  <Text
+                    style={styles.gallerySubText}
+                    numberOfLines={2}
+                    allowFontScaling={false}
+                  >
+                    {item.subtitle}
+                  </Text>
                 </View>
               </TouchableOpacity>
             ))}
