@@ -46,3 +46,6 @@ app-example
 
 georgia-history-app-33d0ce4eea4a.json
 /android
+
+# Play Console-ის ასატვირთი ფაილები (ბილდის არტეფაქტები, არ იკომიტება)
+play-store-assets/
