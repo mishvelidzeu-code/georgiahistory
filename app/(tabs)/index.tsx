@@ -4,7 +4,7 @@ import { getGeorgianDateLabel } from "@/services/date";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient"; // npx expo install expo-linear-gradient
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -56,13 +56,12 @@ export default function HomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const router = useRouter();
   const { user, authLoading } = useAuth();
-  const { history, refreshHistory } = useHistory();
+  const { history, historyLoading, refreshHistory } = useHistory();
 
-  useEffect(() => {
-    // ყურადღება: აქ `cancelAllScheduledNotificationsAsync()` აღარ იძახება —
-    // ის ყოველ გახსნაზე შლიდა ყოველდღიურ შეხსენებას.
-    refreshHistory();
-  }, [refreshHistory]);
+  // ყურადღება: აქ არც `refreshHistory()` ეშვება და არც
+  // `cancelAllScheduledNotificationsAsync()` — პირველი ავტორიზაციამდე ცარიელს
+  // აბრუნებდა (RLS), მეორე კი ყოველ გახსნაზე შლიდა ყოველდღიურ შეხსენებას.
+  // ისტორიას ახლა `HistoryProvider` ითხოვს, სესიის დადგენისთანავე.
 
   const renderHighlightedText = (text: string) => {
     const regex = /(\d+)/g;
@@ -150,6 +149,8 @@ export default function HomeScreen() {
                 </TouchableOpacity>
               ) : history?.georgia_content ? (
                 renderHighlightedText(history.georgia_content)
+              ) : historyLoading ? (
+                <ActivityIndicator color="#D4AF37" style={{ marginTop: 20 }} />
               ) : (
                 <Text style={styles.emptyText}>ინფორმაცია ამ დღისათვის ჯერ არ არის დამატებული.</Text>
               )}
