@@ -21,9 +21,9 @@ const IMAGE = require("../../assets/gallery/4.webp");
 export default function WorldEventsScreen() {
   const router = useRouter();
   const { user, authLoading } = useAuth();
-  const { history } = useHistory();
+  const { history, historyLoading } = useHistory();
 
-  if (authLoading) {
+  if (authLoading || (!history && historyLoading)) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="#D4AF37" />
